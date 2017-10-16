@@ -143,7 +143,7 @@ async function get_document(request, reply) {
 		if (single_doc) {
 			return reply(single_doc);
 		} else {
-			return reply(Boom.notFound('Cannot find Document'));
+			return reply(Boom.notFound('Document not found'));
 		}
 
 	} catch(error) {
@@ -184,15 +184,13 @@ async function patch_document(request, reply) {
 			status: p.status},
 			{autoCommit: true});
 
-		// Get the updated document
-		single_doc = await single_document(request.app.db, request.params.doc_id);
-
-		if (single_doc) {
-			return reply(single_doc);
+		if (update_doc.rowsAffected == 0) {
+			return reply(Boom.notFound('Document not found'));
 		} else {
-			return reply(Boom.notFound('Cannot find Document'));
-		}
-		
+			// Get the updated document
+			single_doc = await single_document(request.app.db, request.params.doc_id);
+			return reply(single_doc);
+		}	
 
 	} catch(error) {
 		
@@ -216,8 +214,13 @@ async function delete_document(request, reply) {
 		`;
 		delete_doc = await request.app.db.execute(qry_delete_doc, {doc_id: request.params.doc_id},
 			{autoCommit: true});
-		
-		return reply(delete_doc);
+
+		if (delete_doc.rowsAffected == 0) {
+			return reply(Boom.notFound('Document not found'));
+		} else {
+			return reply('OK');
+		}
+
 
 	} catch(error) {
 		

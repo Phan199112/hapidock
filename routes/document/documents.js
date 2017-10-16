@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const Boom = require('boom');
 
 module.exports = [
 	{
@@ -50,8 +51,12 @@ async function get_documents(request, reply) {
 		const doc_result = await request.app.db.execute(doc_query, {isAuthenticated: isAuthenticated, user_id: user_id, user_type: user_type,
 			doc_group: request.query.doc_group, doc_key: request.query.doc_key}, {outFormat: 4002});
 		const doc = doc_result.rows
-		
-		return reply(doc);
+
+		if (doc.length == 0) {
+			return reply(Boom.notFound('Document not found'));
+		} else {
+			return reply(doc);
+		}
 
 	} catch(error) {
 		

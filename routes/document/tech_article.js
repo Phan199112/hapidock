@@ -20,7 +20,7 @@ const get_article_id = async function (request, reply) {
 		if (doc_article_id) {
 			return reply(doc_article_id);
 		} else {
-			return reply(Boom.notFound('Cannot find Tech Article'));
+			return reply(Boom.notFound('Tech Article not found'));
 		}
 
 	} catch(error) {
@@ -171,12 +171,7 @@ async function patch_article(request, reply) {
 
 		// Get the updated document
 		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
-
-		if (single_doc) {
-			return reply(single_doc);
-		} else {
-			return reply(Boom.notFound('Cannot find Document'));
-		}
+		return reply(single_doc);
 
 	} catch(error) {
 		
@@ -215,12 +210,7 @@ async function post_model(request, reply) {
 
 		// Get the updated document
 		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
-
-		if (single_doc) {
-			return reply(single_doc);
-		} else {
-			return reply(Boom.notFound('Cannot find Document'));
-		}
+		return reply(single_doc);
 
 
 	} catch(error) {
@@ -248,14 +238,13 @@ async function delete_model(request, reply) {
 		`;
 		delete_model = await request.app.db.execute(qry_delete_model, {doc_article_id: article_id,
 			model_id: request.params.model_id }, {autoCommit: true});
-		
-		// Get the updated document
-		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
 
-		if (single_doc) {
-			return reply(single_doc);
+		if (delete_model.rowsAffected == 0) {
+			return reply(Boom.notFound('Model not found'));
 		} else {
-			return reply(Boom.notFound('Cannot find Document'));
+			// Get the updated document
+			single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
+			return reply(single_doc);
 		}
 
 	} catch(error) {
@@ -284,8 +273,12 @@ async function get_product(request, reply) {
 		`;
 		const product_result = await request.app.db.execute(product_query, {sku: request.query.sku}, {outFormat: 4002});
 		const product = product_result.rows
-		
-		return reply(product);
+
+		if (product.length == 0) {
+			return reply(Boom.notFound('Product not found'));
+		} else {
+			return reply(product);
+		}
 
 	} catch(error) {
 		
@@ -313,19 +306,24 @@ async function post_product(request, reply) {
 		insert_product = await request.app.db.execute(qry_insert_product, {doc_article_id: article_id,
 			product_id: request.params.product_id}, {autoCommit: true});
 
-		// Get the updated document
-		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
-
-		if (single_doc) {
-			return reply(single_doc);
+		if (insert_product.rowsAffected == 0) {
+			return reply(Boom.notFound('Product not found'));
 		} else {
-			return reply(Boom.notFound('Cannot find Document'));
+			// Get the updated document
+			single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
+			return reply(single_doc);
 		}
 
 	} catch(error) {
 		
-		console.log(error);
-		return reply(error);
+		// Check for an Oracle constraint error
+		if (error.message.split(':')[0] == 'ORA-00001') {
+			console.log(error);
+			return reply(Boom.badRequest('Product already exists'));
+		} else {
+			console.log(error);
+			return reply(error);
+		}
 
 	}
 
@@ -346,14 +344,13 @@ async function delete_product(request, reply) {
 		`;
 		delete_product = await request.app.db.execute(qry_delete_product, {doc_article_id: article_id,
 			product_id: request.params.product_id }, {autoCommit: true});
-		
-		// Get the updated document
-		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
 
-		if (single_doc) {
-			return reply(single_doc);
+		if (delete_product.rowsAffected == 0) {
+			return reply(Boom.notFound('Product not found'));
 		} else {
-			return reply(Boom.notFound('Cannot find Document'));
+			// Get the updated document
+			single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
+			return reply(single_doc);
 		}
 
 	} catch(error) {

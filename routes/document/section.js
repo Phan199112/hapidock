@@ -77,17 +77,18 @@ async function post_section(request, reply) {
 
 		// Get the updated document
 		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
-
-		if (single_doc) {
-			return reply(single_doc);
-		} else {
-			return reply(Boom.notFound('Cannot find Document'));
-		}
+		return reply(single_doc);
 
 	} catch(error) {
 		
-		console.log(error);
-		return reply(error);
+		// Check for an Oracle constraint error
+		if (error.message.split(':')[0] == 'ORA-02291') {
+			console.log(error);
+			return reply(Boom.notFound('Document not found'));
+		} else {
+			console.log(error);
+			return reply(error);
+		}
 
 	}
 
@@ -107,14 +108,13 @@ async function patch_section(request, reply) {
 		const patch_section = await request.app.db.execute(qry_patch_section, {doc_id: request.params.doc_id,
 			section_id: request.params.section_id, title: request.payload.title, content: request.payload.content},
 			{autoCommit: true});
-		
-		// Get the updated document
-		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
 
-		if (single_doc) {
-			return reply(single_doc);
+		if (patch_section.rowsAffected == 0) {
+			return reply(Boom.notFound('Document or section not found'));
 		} else {
-			return reply(Boom.notFound('Cannot find Document'));
+			// Get the updated document
+			single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
+			return reply(single_doc);
 		}
 
 	} catch(error) {
@@ -139,13 +139,12 @@ async function delete_section(request, reply) {
 		delete_section = await request.app.db.execute(qry_delete_section, {doc_id: request.params.doc_id,
 			section_id: request.params.section_id }, {autoCommit: true});
 		
-		// Get the updated document
-		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
-
-		if (single_doc) {
-			return reply(single_doc);
+		if (delete_section.rowsAffected == 0) {
+			return reply(Boom.notFound('Document or section not found'));
 		} else {
-			return reply(Boom.notFound('Cannot find Document'));
+			// Get the updated document
+			single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
+			return reply(single_doc);
 		}
 
 	} catch(error) {

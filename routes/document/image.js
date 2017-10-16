@@ -144,12 +144,7 @@ async function post_image(request, reply) {
 
 				// Get the updated document
 				single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
-
-				if (single_doc) {
-					return reply(single_doc);
-				} else {
-					return reply(Boom.notFound('Cannot find Document'));
-				}
+				return reply(single_doc);
 
 			} else {
 
@@ -163,8 +158,14 @@ async function post_image(request, reply) {
 
 	} catch(error) {
 		
-		console.log(error);
-		return reply(error);
+		// Check for an Oracle constraint error
+		if (error.message.split(':')[0] == 'ORA-02291') {
+			console.log(error);
+			return reply(Boom.notFound('Document or section not found'));
+		} else {
+			console.log(error);
+			return reply(error);
+		}
 
 	}
 
@@ -214,17 +215,15 @@ async function delete_image(request, reply) {
 				deleter.on('error', reject);
 			});
 			await delete_file;
-		}
 
-		await request.app.db.commit();
+			await request.app.db.commit();
 		
-		// Get the updated document
-		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
+			// Get the updated document
+			single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
 
-		if (single_doc) {
 			return reply(single_doc);
 		} else {
-			return reply(Boom.notFound('Cannot find Document'));
+			return reply(Boom.notFound('Image not found'));
 		}
 
 	} catch(error) {
