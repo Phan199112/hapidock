@@ -11,3 +11,8 @@ A Standard user is one who registered on `https://cart.crowleymarine.com`. This 
 
 ### Dealer Admin user
 A Dealer Admin user has access to read and edit all documents as well as change a document status to `published`.
+
+# Docker
+We are using Docker for both testing and production. `docker-compose up` will start the test server on port 3000.  
+
+Environment variables need to be set. You can set them manually or create a `.env` file for Docker to read.  Look at `.env_example` for more information.
