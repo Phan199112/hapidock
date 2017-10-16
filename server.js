@@ -58,6 +58,8 @@ const provision = async () => {
                         basePath: '/v2/',
                         pathPrefixSize: 2,
                         documentationPath: '/v2/',
+                        swaggerUIPath: '/v2/swaggerui/',
+                        jsonPath: '/v2/swagger.json',
                         auth: (process.env.NODE_ENV == 'development') ? false : 'admin_ips'
                     }
                 },
