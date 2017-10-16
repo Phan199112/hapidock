@@ -15,14 +15,23 @@ const provision = async () => {
     try {
 
         await server.register(
-            [ { 'register': require('hapi-auth-jwt2') } ]
+            [
+                { 'register': require('hapi-auth-jwt2') },
+                { 'register': require('hapi-auth-ip-whitelist') },
+                { 'register': require('therealyou') }
+            ]
         );
 
+        // JWT Auth
         await server.auth.strategy('jwt', 'jwt',
             { key: '7b7e5a9d-03b3-41a8-8c48-c51149a72b0d', // Secret key
                 validateFunc: validate, // Validate function
                 verifyOptions: { algorithms: [ 'HS256' ] }
         });
+
+        // IP Address Auth
+        // @TODO - Pull the IP Addresses from Oracle
+        await server.auth.strategy('admin_ips', 'ip-whitelist', ['179.7.148.90','185.13.113.108']);
 
         // await server.auth.default('jwt');
 
@@ -48,7 +57,8 @@ const provision = async () => {
                         security: [{ 'jwt': [] }],
                         basePath: '/v2/',
                         pathPrefixSize: 2,
-                        documentationPath: '/v2/'
+                        documentationPath: '/v2/',
+                        auth: (process.env.NODE_ENV == 'development') ? false : 'admin_ips'
                     }
                 },
                 {
