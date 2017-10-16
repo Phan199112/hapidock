@@ -29,7 +29,7 @@ async function get_documents(request, reply) {
 
 		// Setup user credentials
 		const isAuthenticated = +request.auth.isAuthenticated;
-		let user_id = 0, user_type = '';
+		let user_id = '', user_type = '';
 		if ( isAuthenticated ) {
 			user_id = request.auth.credentials.userid;
 			user_type = request.auth.credentials.role;
@@ -42,11 +42,10 @@ async function get_documents(request, reply) {
 			WHERE doc_group = :doc_group
 			AND (doc_key = :doc_key OR :doc_key IS NULL)
 			AND (
-				(:isAuthenticated = 1 AND user_id = :user_id AND user_type = :user_type)
+				(:isAuthenticated = 1 AND user_id = to_char(:user_id) AND user_type = :user_type)
 				OR (:isAuthenticated = 1 AND :user_type = 'pilot')
 				OR (:isAuthenticated = 0 AND status = 'published')
 			)
-			
 		`;
 		const doc_result = await request.app.db.execute(doc_query, {isAuthenticated: isAuthenticated, user_id: user_id, user_type: user_type,
 			doc_group: request.query.doc_group, doc_key: request.query.doc_key}, {outFormat: 4002});
