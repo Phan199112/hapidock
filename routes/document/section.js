@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const Boom = require('boom');
 const oracledb = require('oracledb');
 const { single_document } = require('./document');
 
@@ -149,8 +150,14 @@ async function delete_section(request, reply) {
 
 	} catch(error) {
 		
-		console.log(error);
-		return reply(error);
+		// Check for an Oracle constraint error
+		if (error.message.split(':')[0] == 'ORA-02292') {
+			console.log(error);
+			return reply(Boom.forbidden('All images must be deleted first'));
+		} else {
+			console.log(error);
+			return reply(error);
+		}
 
 	}
 

@@ -221,8 +221,14 @@ async function delete_document(request, reply) {
 
 	} catch(error) {
 		
-		console.log(error);
-		return reply(error);
+		// Check for an Oracle constraint error
+		if (error.message.split(':')[0] == 'ORA-02292') {
+			console.log(error);
+			return reply(Boom.forbidden('All sections and images must be deleted first'));
+		} else {
+			console.log(error);
+			return reply(error);
+		}
 
 	}
 
