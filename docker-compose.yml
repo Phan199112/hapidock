@@ -1,0 +1,13 @@
+version: '3'
+services:
+  pilotapi2:
+    build: .
+    ports:
+     - "3000:3000"
+    env_file:
+     - .env
+    # Volumes need to be specified explicitly as there
+    # is no way to exclude node_modules
+    volumes:
+     - ./routes:/usr/src/app/routes
+     - ./server.js:/usr/src/app/server.js

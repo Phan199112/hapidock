@@ -1,0 +1,157 @@
+const Joi = require('joi');
+const oracledb = require('oracledb');
+const { single_document } = require('./document');
+
+module.exports = [
+	{
+		method: 'POST',
+		path: '/document/{doc_id}/section',
+		config: {
+			handler: post_section,
+			description: 'Create a new document section',
+			auth: 'jwt',
+			tags: ['api'],
+			validate: {
+				params: {
+					doc_id : Joi.number().required().description('Document ID')
+				},
+				payload: { 
+					title: Joi.string().required(), 
+					content: Joi.string().required()
+				}
+			}
+		}
+	},
+	{
+		method: 'PATCH',
+		path: '/document/{doc_id}/section/{section_id}',
+		config: {
+			handler: patch_section,
+			description: 'Modify a document section',
+			auth: 'jwt',
+			tags: ['api'],
+			validate: {
+				params: {
+					doc_id : Joi.number().required().description('Document ID'),
+					section_id : Joi.number().required().description('Section ID')
+				},
+				payload: { 
+					title: Joi.string(), 
+					content: Joi.string()
+				}
+			}
+		}
+	},
+	{
+		method: 'DELETE',
+		path: '/document/{doc_id}/section/{section_id}',
+		config: {
+			handler: delete_section,
+			description: 'Delete a document section',
+			auth: 'jwt',
+			tags: ['api'],
+			validate: {
+				params: {
+					doc_id : Joi.number().required().description('Document ID'),
+					section_id : Joi.number().required().description('Section ID')
+				}
+			}
+		}
+	}
+];
+
+async function post_section(request, reply) {
+
+	try {
+
+		// Insert new section
+		const qry_insert_section = `
+			INSERT INTO doc_sections(doc_id, title, content, position)
+			VALUES(:doc_id, :title, :content,
+				(SELECT NVL(MAX(position),0) + 1 FROM doc_sections WHERE doc_id = :doc_id)
+			)
+		`;
+		insert_section = await request.app.db.execute(qry_insert_section, {doc_id: request.params.doc_id,
+			title: request.payload.title, content: request.payload.content }, {autoCommit: true});
+
+		// Get the updated document
+		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
+
+		if (single_doc) {
+			return reply(single_doc);
+		} else {
+			return reply(Boom.notFound('Cannot find Document'));
+		}
+
+	} catch(error) {
+		
+		console.log(error);
+		return reply(error);
+
+	}
+
+};
+
+async function patch_section(request, reply) {
+
+	try {
+
+		// Modify a section
+		const qry_patch_section = `
+			UPDATE doc_sections
+			SET title = :title, content = :content
+			WHERE doc_id = :doc_id 
+			AND doc_section_id = :section_id
+		`;
+		const patch_section = await request.app.db.execute(qry_patch_section, {doc_id: request.params.doc_id,
+			section_id: request.params.section_id, title: request.payload.title, content: request.payload.content},
+			{autoCommit: true});
+		
+		// Get the updated document
+		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
+
+		if (single_doc) {
+			return reply(single_doc);
+		} else {
+			return reply(Boom.notFound('Cannot find Document'));
+		}
+
+	} catch(error) {
+		
+		console.log(error);
+		return reply(error);
+
+	}
+
+};
+
+async function delete_section(request, reply) {
+
+	try {
+
+		// Delete a section
+		const qry_delete_section = `
+			DELETE FROM doc_sections
+			WHERE doc_id = :doc_id 
+			AND doc_section_id = :section_id
+		`;
+		delete_section = await request.app.db.execute(qry_delete_section, {doc_id: request.params.doc_id,
+			section_id: request.params.section_id }, {autoCommit: true});
+		
+		// Get the updated document
+		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
+
+		if (single_doc) {
+			return reply(single_doc);
+		} else {
+			return reply(Boom.notFound('Cannot find Document'));
+		}
+
+	} catch(error) {
+		
+		console.log(error);
+		return reply(error);
+
+	}
+
+};

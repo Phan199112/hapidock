@@ -1,0 +1,27 @@
+{
+  "name": "pilot-api",
+  "version": "1.0.0",
+  "description": "Pilot API V2",
+  "main": "server.js",
+  "dependencies": {
+    "hapi": "^16.6.2",
+    "hapi-auth-jwt2": "^7.3.0",
+    "hapi-plugin-oracledb": "^3.0.3",
+    "hapi-router": "^3.5.0",
+    "hapi-swagger": "^7.8.1",
+    "inert": "^4.2.1",
+    "joi": "^11.3.3",
+    "pm2-docker": "^2.1.0",
+    "s3": "^4.4.0",
+    "sharp": "^0.18.4",
+    "supervisor": "^0.12.0",
+    "vision": "^4.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "supervisor -w routes,server.js server.js"
+  },
+  "author": "Paul Crowley",
+  "license": "ISC"
+}
