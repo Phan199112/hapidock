@@ -42,7 +42,7 @@ async function get_documents(request, reply) {
 			WHERE doc_group = :doc_group
 			AND (doc_key = :doc_key OR :doc_key IS NULL)
 			AND (
-				(:isAuthenticated = 1 AND user_id = to_char(:user_id) AND user_type = :user_type)
+				(:isAuthenticated = 1 AND :user_type = 'acai' AND user_id = to_char(:user_id))
 				OR (:isAuthenticated = 1 AND :user_type = 'pilot')
 				OR (:isAuthenticated = 0 AND status = 'published')
 			)
