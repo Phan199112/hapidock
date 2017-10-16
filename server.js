@@ -4,7 +4,6 @@ const Hapi = require('hapi');
 const Inert = require('inert');
 const Vision = require('vision');
 const server = new Hapi.Server();
-require('hapi-auth-jwt2')
 
 server.connection({
     host: '0.0.0.0',
