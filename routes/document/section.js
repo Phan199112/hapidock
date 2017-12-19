@@ -152,7 +152,7 @@ async function delete_section(request, reply) {
 		// Check for an Oracle constraint error
 		if (error.message.split(':')[0] == 'ORA-02292') {
 			console.log(error);
-			return reply(Boom.forbidden('All images must be deleted first'));
+			return reply(Boom.conflict('All images must be deleted first'));
 		} else {
 			console.log(error);
 			return reply(error);
