@@ -8,7 +8,6 @@ module.exports = [
             handler: get_i18n,
             description: 'Gets i18n translations for a single table',
             notes: 'Returns i18n translations using language_id and table_name',
-            auth: 'jwt',
             tags: ['api'],
             validate: {
                 params: {
@@ -147,7 +146,10 @@ async function post_i18n(request, reply) {
                 WHEN MATCHED THEN UPDATE
                 SET D.text_es = DECODE(:language_id, 'es', S.text_translated, D.text_es),
                     D.text_fr = DECODE(:language_id, 'fr', S.text_translated, D.text_fr),
-                    D.text_pt = DECODE(:language_id, 'pt', S.text_translated, D.text_pt)
+                    D.text_pt = DECODE(:language_id, 'pt', S.text_translated, D.text_pt),
+                    D.text_es_pilot = DECODE(:language_id, 'es', S.text_translated, D.text_es_pilot),
+                    D.text_fr_pilot = DECODE(:language_id, 'fr', S.text_translated, D.text_fr_pilot),
+                    D.text_pt_pilot = DECODE(:language_id, 'pt', S.text_translated, D.text_pt_pilot)
             `;
             update_translation = await request.app.db.execute(qry_update_translation, {table_name: request.params.table_name,
                 language_id: request.params.language_id}, {autoCommit: true});
