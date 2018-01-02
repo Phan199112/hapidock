@@ -4,6 +4,7 @@
   "description": "Pilot API V2",
   "main": "server.js",
   "dependencies": {
+    "@pager/hapi-redis": "^1.1.1",
     "hapi": "^16.6.2",
     "hapi-auth-ip-whitelist": "0.0.5",
     "hapi-auth-jwt2": "^7.3.0",
