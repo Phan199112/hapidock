@@ -9,6 +9,7 @@ module.exports = [
             handler: get_keys,
             description: 'Gets keys from the cache',
             notes: 'Returns keys from the cache matching a pattern',
+            auth: 'jwt',
             tags: ['api'],
             validate: {
                 params: {
@@ -30,6 +31,7 @@ module.exports = [
             handler: delete_keys,
             description: 'Deletes keys from the cache',
             notes: 'Deletes keys from the cache matching a pattern',
+            auth: 'jwt',
             tags: ['api'],
             validate: {
                 params: {
