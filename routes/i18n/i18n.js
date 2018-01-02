@@ -8,6 +8,7 @@ module.exports = [
             handler: get_i18n,
             description: 'Gets i18n translations for a single table',
             notes: 'Returns i18n translations using language_id and table_name',
+            auth: 'jwt',
             tags: ['api'],
             validate: {
                 params: {
