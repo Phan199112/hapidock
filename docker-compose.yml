@@ -11,3 +11,14 @@ services:
     volumes:
      - ./routes:/usr/src/app/routes
      - ./server.js:/usr/src/app/server.js
+    depends_on:
+     - redis
+    networks:
+     - redis
+  redis:
+    image: redis
+    networks:
+    - redis
+networks:
+  redis:
+    driver: bridge

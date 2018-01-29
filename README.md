@@ -12,6 +12,14 @@ A Standard user is one who registered on `https://cart.crowleymarine.com`. This 
 ### Dealer Admin user
 A Dealer Admin user has access to read and edit all documents as well as change a document status to `published`.
 
+# Redis
+We connect to the following Redis databases, depending on the context.  
+1. Staging  
+2. Production  
+3. pilotAPI2 (local)  
+4. pilotCMS2 (local)  
+The staging and production environments in ECS use their respective databases in ElastiCache. Public access to ElastiCache is restricted however so we must use local instances for development.
+
 # Docker
 We are using Docker for both testing and production. `docker-compose up` will start the test server on port 3000.  
 
