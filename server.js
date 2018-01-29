@@ -77,7 +77,7 @@ const provision = async () => {
                 {
                     'register': require('@pager/hapi-redis'),
                     'options': {
-                        host: (process.env.NODE_ENV === 'production') ? 'pilot.ajcbxn.0001.use1.cache.amazonaws.com' : 'docker.for.mac.localhost'
+                        host: process.env.REDIS_HOST
                     }
                 }
             ]
