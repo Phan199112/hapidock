@@ -53,7 +53,7 @@ module.exports = [
             handler: delete_updated_keys,
             description: 'Deletes recently updated keys from the cache',
             notes: 'Deletes keys from the cache containing recently updated products',
-            // auth: 'jwt',
+            auth: 'jwt',
             tags: ['api'],
             validate: {
                 query: {
