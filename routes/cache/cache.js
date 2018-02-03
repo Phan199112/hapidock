@@ -136,7 +136,7 @@ async function delete_updated_keys(request, reply) {
             SELECT product_id FROM product_images
             WHERE dateadded > sysdate - :num_days
         `;
-        const product_result = await request.app.db.execute(product_query, {num_days: request.query.num_days});
+        const product_result = await request.app.db.execute(product_query, {num_days: request.query.num_days}, {maxRows: 1000});
         const product_id_array = [].concat.apply([], product_result.rows);
         const product_id_list = `'${product_id_array.join('\',\'')}'`;
 
