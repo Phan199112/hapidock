@@ -163,13 +163,15 @@ async function delete_updated_keys(request, reply) {
             AND p.cacheupdated < x.dateupdated
         `;
         const mfg_result = await request.app.db.execute(mfg_query, {}, {outFormat: 4002, maxRows: 1});
-        const mfg_account_id = mfg_result.rows[0]['MFG_ACCOUNT_ID'];
-        const mfg = (mfg_account_id == 1) ? 'brp' : (mfg_account_id == 2) ? 'mercury' : 'yamaha';
 
         // Stop processing if no records are found
         if ( mfg_result.rows.length == 0) {
             return reply(`0 products found`);
         }
+
+        // Set mfg variables
+        const mfg_account_id = mfg_result.rows[0]['MFG_ACCOUNT_ID'];
+        const mfg = (mfg_account_id == 1) ? 'brp' : (mfg_account_id == 2) ? 'mercury' : 'yamaha';
 
         // Subquery to get updated products
         const product_query = `
