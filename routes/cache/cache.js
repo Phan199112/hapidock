@@ -56,7 +56,7 @@ module.exports = [
             tags: ['api'],
             validate: {
                 query: {
-                    num_rows : Joi.number().default(1000).description('Number of products to process')
+                    num_rows : Joi.number().default(500).description('Number of products to process')
                 }
             }
         }
