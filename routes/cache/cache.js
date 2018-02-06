@@ -48,7 +48,7 @@ module.exports = [
     },
     {
         method: 'POST',
-        path: '/cache',
+        path: '/cache/{mfg}',
         config: {
             handler: delete_updated_keys,
             description: 'Deletes recently updated keys from the cache',
@@ -56,6 +56,10 @@ module.exports = [
             auth: 'jwt',
             tags: ['api'],
             validate: {
+                params: {
+                    mfg: Joi.string().required().valid(['brp','mercury','yamaha'])
+                    
+                },
                 query: {
                     num_rows : Joi.number().default(1000).description('Number of products to process')
                 }
@@ -128,6 +132,10 @@ async function delete_updated_keys(request, reply) {
         // Promisify Redis client
         const delRedis = util.promisify(client.del).bind(client);
 
+        // Setup manufacturer variables
+        const mfg = request.params.mfg;
+        const mfg_account_id = (mfg == 'brp') ? 1 : (mfg == 'mercury') ? 2 : 10;
+
         // Subquery to get updated products
         const product_query = `
             SELECT DISTINCT x.product_id FROM
@@ -141,8 +149,9 @@ async function delete_updated_keys(request, reply) {
             products p
             WHERE x.product_id = p.product_id
             AND p.cacheupdated < x.dateupdated
+            AND p.mfg_account_id = :mfg_account_id
         `;
-        const product_result = await request.app.db.execute(product_query, {}, {maxRows: request.query.num_rows});
+        const product_result = await request.app.db.execute(product_query, {mfg_account_id: mfg_account_id}, {maxRows: request.query.num_rows});
         const product_id_array = [].concat.apply([], product_result.rows);
         const product_id_list = `'${product_id_array.join('\',\'')}'`;
 
@@ -171,7 +180,7 @@ async function delete_updated_keys(request, reply) {
 
         // Diagram Page
         const diagram_page_query = `
-            SELECT DISTINCT '/diagram_page:{MFG_ACCOUNT_ID}-'||pageid||'-parts,refnums:{LANGUAGE_ID}' FROM
+            SELECT DISTINCT '/diagram_page:${mfg_account_id}-'||pageid||'-parts,refnums:{LANGUAGE_ID}' FROM
             (SELECT b.PageID, (
               SELECT MAX (
                   CASE
@@ -185,60 +194,44 @@ async function delete_updated_keys(request, reply) {
               CONNECT BY NOCYCLE PRIOR p.superceding_product_id = p.Product_ID
               AND PRIOR di.inventory = 0
             ) SS_Product_ID
-            FROM {MFG}.pages b)
+            FROM ${mfg}.pages b)
             WHERE SS_Product_ID IN (${product_id_list})
         `;
-        const diagram_page_query_brp = diagram_page_query.replace(/{MFG_ACCOUNT_ID}/g, '1').replace(/{MFG}/g, 'brp');
-        const diagram_page_query_mercury = diagram_page_query.replace(/{MFG_ACCOUNT_ID}/g, '2').replace(/{MFG}/g, 'mercury');
-        const diagram_page_query_yamaha = diagram_page_query.replace(/{MFG_ACCOUNT_ID}/g, '10').replace(/{MFG}/g, 'yamaha');
 
         // Diagram Prop
         const diagram_prop_query = `
-            SELECT DISTINCT '/diagram_prop:{MFG_ACCOUNT_ID}-'||g.groupid||'-:{LANGUAGE_ID}'
+            SELECT DISTINCT '/diagram_prop:${mfg_account_id}-'||g.groupid||'-:{LANGUAGE_ID}'
             FROM
             (
               SELECT CONNECT_BY_ROOT product_id original_product_id, product_id AS current_product_id, CONNECT_BY_ISLEAF ISLEAF
               FROM products
               CONNECT BY NOCYCLE PRIOR superceding_product_id = Product_ID
             ) p,
-            {MFG}.pages m, {MFG}.groups g
+            ${mfg}.pages m, ${mfg}.groups g
             WHERE m.pageid = g.pageid
             AND p.original_product_id = m.product_id
             AND ISLEAF = 1
             AND current_product_id IN (${product_id_list})
             UNION
-            SELECT DISTINCT '/diagram_prop:{MFG_ACCOUNT_ID}-'||g.groupid||'-:{LANGUAGE_ID}'
-            FROM prop_groups pg, {MFG}.groups g, gearcase_pages p, gearcase_housings h
+            SELECT DISTINCT '/diagram_prop:${mfg_account_id}-'||g.groupid||'-:{LANGUAGE_ID}'
+            FROM prop_groups pg, ${mfg}.groups g, gearcase_pages p, gearcase_housings h
             WHERE pg.prop_group_id = h.prop_group_id 
             AND g.pageid = p.pageid
             AND h.latest_product_id = p.latest_product_id
-            AND p.mfg = {MFG_ACCOUNT_ID}
+            AND p.mfg = ${mfg_account_id}
             AND original_group_type = 'primary'
             AND pg.product_id IN (${product_id_list})
         `;
-        const diagram_prop_query_brp = diagram_prop_query.replace(/{MFG_ACCOUNT_ID}/g, '1').replace(/{MFG}/g, 'brp');
-        const diagram_prop_query_mercury = diagram_prop_query.replace(/{MFG_ACCOUNT_ID}/g, '2').replace(/{MFG}/g, 'mercury');
-        const diagram_prop_query_yamaha = diagram_prop_query.replace(/{MFG_ACCOUNT_ID}/g, '10').replace(/{MFG}/g, 'yamaha');
 
         // Combined query to get Redis patterns
-        // Runs very slow on test database
-        // If needed we can segregate based on mfg
         const redis_pattern_query = `
             ${single_product_query}
             UNION
             ${product_listing_query}
             UNION
-            ${diagram_page_query_brp}
+            ${diagram_page_query}
             UNION
-            ${diagram_page_query_mercury}
-            UNION
-            ${diagram_page_query_yamaha}
-            UNION
-            ${diagram_prop_query_brp}
-            UNION
-            ${diagram_prop_query_mercury}
-            UNION
-            ${diagram_prop_query_yamaha}
+            ${diagram_prop_query}
         `;
         const redis_pattern_result = await request.app.db.execute(redis_pattern_query);
         const redis_pattern = [].concat.apply([], redis_pattern_result.rows);
