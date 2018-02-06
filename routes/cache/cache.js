@@ -137,6 +137,9 @@ async function delete_updated_keys(request, reply) {
                 UNION ALL
                 SELECT product_id, dateadded AS dateupdated
                 FROM product_images
+                UNION ALL
+                SELECT product_id, dateentered AS dateupdated
+                FROM product_inv_notes
             ) x,
             products p
             WHERE x.product_id = p.product_id
@@ -159,6 +162,9 @@ async function delete_updated_keys(request, reply) {
                 UNION ALL
                 SELECT product_id, dateadded AS dateupdated
                 FROM product_images
+                UNION ALL
+                SELECT product_id, dateentered AS dateupdated
+                FROM product_inv_notes
             ) x,
             products p
             WHERE x.product_id = p.product_id
