@@ -233,7 +233,7 @@ async function delete_updated_keys(request, reply) {
             UNION
             ${diagram_prop_query}
         `;
-        const redis_pattern_result = await request.app.db.execute(redis_pattern_query);
+        const redis_pattern_result = await request.app.db.execute(redis_pattern_query, {}, {maxRows: 100000});
         const redis_pattern = [].concat.apply([], redis_pattern_result.rows);
 
         // Create patterns for each language
