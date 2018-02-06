@@ -48,17 +48,13 @@ module.exports = [
     },
     {
         method: 'POST',
-        path: '/cache/{mfg}',
+        path: '/cache',
         config: {
             handler: delete_updated_keys,
             description: 'Deletes recently updated keys from the cache',
             notes: 'Deletes keys from the cache containing recently updated products',
             tags: ['api'],
             validate: {
-                params: {
-                    mfg: Joi.string().required().valid(['brp','mercury','yamaha'])
-                    
-                },
                 query: {
                     num_rows : Joi.number().default(1000).description('Number of products to process')
                 }
@@ -132,8 +128,27 @@ async function delete_updated_keys(request, reply) {
         const delRedis = util.promisify(client.del).bind(client);
 
         // Setup manufacturer variables
-        const mfg = request.params.mfg;
-        const mfg_account_id = (mfg == 'brp') ? 1 : (mfg == 'mercury') ? 2 : 10;
+        // Get mfg_account_id from first product
+        const mfg_query = `
+            SELECT DISTINCT p.mfg_account_id FROM
+            (
+                SELECT product_id, dateupdated
+                FROM dealer.dealer_inventory_2
+                UNION
+                SELECT product_id, dateadded AS dateupdated
+                FROM product_images
+            ) x,
+            products p
+            WHERE x.product_id = p.product_id
+            AND p.cacheupdated < x.dateupdated
+        `;
+        const mfg_result = await request.app.db.execute(mfg_query, {}, {outFormat: 4002, maxRows: 1});
+        const mfg_account_id = mfg_result.rows[0]['MFG_ACCOUNT_ID'];
+        const mfg = (mfg_account_id == 1) ? 'brp' : (mfg_account_id == 2) ? 'mercury' : 'yamaha';
+
+        if ( mfg_result.rows.length == 0) {
+            return reply(`0 products found`);
+        }
 
         // Subquery to get updated products
         const product_query = `
@@ -153,10 +168,6 @@ async function delete_updated_keys(request, reply) {
         const product_result = await request.app.db.execute(product_query, {mfg_account_id: mfg_account_id}, {maxRows: request.query.num_rows});
         const product_id_array = [].concat.apply([], product_result.rows);
         const product_id_list = `'${product_id_array.join('\',\'')}'`;
-
-        if ( product_id_array.length == 0) {
-            reply(`0 products found`);
-        }
 
         // Single Product
         const single_product_query = `
@@ -255,7 +266,7 @@ async function delete_updated_keys(request, reply) {
         `;
         const update_result = await request.app.db.execute(update_query, {}, {autoCommit: true});
 
-        reply(`${redis_del} key(s) deleted`);
+        reply(`${redis_del} key(s) deleted for ${mfg}`);
 
     } catch(error) {
         
