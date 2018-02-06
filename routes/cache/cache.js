@@ -130,11 +130,11 @@ async function delete_updated_keys(request, reply) {
         // Setup manufacturer variables
         // Get mfg_account_id from first product
         const mfg_query = `
-            SELECT DISTINCT p.mfg_account_id FROM
+            SELECT p.mfg_account_id FROM
             (
                 SELECT product_id, dateupdated
                 FROM dealer.dealer_inventory_2
-                UNION
+                UNION ALL
                 SELECT product_id, dateadded AS dateupdated
                 FROM product_images
             ) x,
@@ -156,7 +156,7 @@ async function delete_updated_keys(request, reply) {
             (
                 SELECT product_id, dateupdated
                 FROM dealer.dealer_inventory_2
-                UNION
+                UNION ALL
                 SELECT product_id, dateadded AS dateupdated
                 FROM product_images
             ) x,
@@ -236,11 +236,11 @@ async function delete_updated_keys(request, reply) {
         // Combined query to get Redis patterns
         const redis_pattern_query = `
             ${single_product_query}
-            UNION
+            UNION ALL
             ${product_listing_query}
-            UNION
+            UNION ALL
             ${diagram_page_query}
-            UNION
+            UNION ALL
             ${diagram_prop_query}
         `;
         const redis_pattern_result = await request.app.db.execute(redis_pattern_query, {}, {maxRows: 100000});
