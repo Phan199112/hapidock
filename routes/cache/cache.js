@@ -127,19 +127,32 @@ async function delete_updated_keys(request, reply) {
         // Promisify Redis client
         const delRedis = util.promisify(client.del).bind(client);
 
-        // Setup manufacturer variables
-        // Get mfg_account_id from first product
+        // Inner SQL for product queries
+        const inner_sql = `
+            SELECT product_id, dateupdated
+            FROM dealer.dealer_inventory_2
+            UNION ALL
+            SELECT product_id, dateadded AS dateupdated
+            FROM product_images
+            UNION ALL
+            SELECT product_id, dateentered AS dateupdated
+            FROM product_inv_notes
+            UNION ALL
+            SELECT product_id, qa_date AS dateupdated
+            FROM product_qa
+            UNION ALL
+            SELECT product_id, date_submitted AS dateupdated
+            FROM order_stories s, orders o WHERE s.order_no = o.order_no
+        `;
+
+        /*
+            Setup manufacturer variables
+            Get mfg_account_id from first product
+        */
         const mfg_query = `
             SELECT p.mfg_account_id FROM
             (
-                SELECT product_id, dateupdated
-                FROM dealer.dealer_inventory_2
-                UNION ALL
-                SELECT product_id, dateadded AS dateupdated
-                FROM product_images
-                UNION ALL
-                SELECT product_id, dateentered AS dateupdated
-                FROM product_inv_notes
+                ${inner_sql}
             ) x,
             products p
             WHERE x.product_id = p.product_id
@@ -157,14 +170,7 @@ async function delete_updated_keys(request, reply) {
         const product_query = `
             SELECT DISTINCT x.product_id FROM
             (
-                SELECT product_id, dateupdated
-                FROM dealer.dealer_inventory_2
-                UNION ALL
-                SELECT product_id, dateadded AS dateupdated
-                FROM product_images
-                UNION ALL
-                SELECT product_id, dateentered AS dateupdated
-                FROM product_inv_notes
+                ${inner_sql}
             ) x,
             products p
             WHERE x.product_id = p.product_id
