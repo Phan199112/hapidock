@@ -127,6 +127,13 @@ async function delete_updated_keys(request, reply) {
         // Promisify Redis client
         const delRedis = util.promisify(client.del).bind(client);
 
+
+        /*
+            Setup manufacturer variables and
+            get a list of product_ids that will be
+            used in all of the pattern queries
+        */
+
         // Inner SQL for product queries
         const inner_sql = `
             SELECT product_id, dateupdated
@@ -145,10 +152,7 @@ async function delete_updated_keys(request, reply) {
             FROM order_stories s, orders o WHERE s.order_no = o.order_no
         `;
 
-        /*
-            Setup manufacturer variables
-            Get mfg_account_id from first product
-        */
+        // Determine which mfg to process
         const mfg_query = `
             SELECT p.mfg_account_id FROM
             (
@@ -162,6 +166,7 @@ async function delete_updated_keys(request, reply) {
         const mfg_account_id = mfg_result.rows[0]['MFG_ACCOUNT_ID'];
         const mfg = (mfg_account_id == 1) ? 'brp' : (mfg_account_id == 2) ? 'mercury' : 'yamaha';
 
+        // Stop processing if no records are found
         if ( mfg_result.rows.length == 0) {
             return reply(`0 products found`);
         }
@@ -181,14 +186,19 @@ async function delete_updated_keys(request, reply) {
         const product_id_array = [].concat.apply([], product_result.rows);
         const product_id_list = `'${product_id_array.join('\',\'')}'`;
 
-        // Single Product
+
+
+        /* 
+            Queries to generate Redis patterns
+        */
+        // Single Product pattern
         const single_product_query = `
             SELECT '/single_product:'||product_id||':{LANGUAGE_ID}' AS pattern
             FROM products
             WHERE product_id IN (${product_id_list})
         `;
 
-        // Product Listing
+        // Product Listing pattern
         const product_listing_query = `
             SELECT pattern FROM
             (
@@ -200,7 +210,7 @@ async function delete_updated_keys(request, reply) {
             WHERE cat_level = 2
         `;
 
-        // Diagram Page
+        // Diagram Page pattern
         const diagram_page_query = `
             SELECT DISTINCT '/diagram_page:${mfg_account_id}-'||pageid||'-parts,refnums:{LANGUAGE_ID}' FROM
             (SELECT b.PageID, (
@@ -220,7 +230,7 @@ async function delete_updated_keys(request, reply) {
             WHERE SS_Product_ID IN (${product_id_list})
         `;
 
-        // Diagram Prop
+        // Diagram Prop pattern
         const diagram_prop_query = `
             SELECT DISTINCT '/diagram_prop:${mfg_account_id}-'||g.groupid||'-:{LANGUAGE_ID}'
             FROM
@@ -245,7 +255,9 @@ async function delete_updated_keys(request, reply) {
             AND pg.product_id IN (${product_id_list})
         `;
 
-        // Combined query to get Redis patterns
+        /* 
+            Combine all of the Redis pattern queries and execute
+        */
         const redis_pattern_query = `
             ${single_product_query}
             UNION ALL
