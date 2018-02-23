@@ -12,7 +12,7 @@ module.exports = [
             tags: ['api'],
             validate: {
                 params: {
-                    language_id : Joi.string().required().valid(['es','fr','pt']),
+                    language_id : Joi.string().required().valid(['en','es','fr','pt']),
                     table_name : Joi.string().required().valid(['category','content','content_doc',
                         'group_menu','group_notes','page_no','pages','products'])
                 },
