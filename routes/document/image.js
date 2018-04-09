@@ -88,17 +88,21 @@ async function post_image(request, reply) {
 				
 				// Write to filesystem
 				const path = "/tmp/" + hires_image;
+
 				const file = fs.createWriteStream(path);
-				data.file.pipe(file);
-				const write_file = new Promise((resolve, reject) => {
-					data.file.on('end', ()=>resolve(hires_image));
-					data.file.on('error', reject);
-				});
-				const filename = await write_file;
+                const write_file = new Promise((resolve, reject) => {
+                    file.on('finish', ()=> {
+                        resolve(path)
+                    });
+                    data.file.on('error', reject);
+                });
+
+                data.file.pipe(file);
+				const hires_file = await write_file;
 
 				// Create resized images
-				await sharp(path).resize(600).toFile(`/tmp/${lg_image}`);
-				await sharp(path).resize(1200).toFile(`/tmp/${xl_image}`);
+				await sharp(hires_file).resize(600).toFile(`/tmp/${lg_image}`);
+				await sharp(hires_file).resize(1200).toFile(`/tmp/${xl_image}`);
 
 				// Save image to database
 				const qry_insert_image = `
