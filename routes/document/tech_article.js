@@ -2,6 +2,7 @@ const Joi = require('joi');
 const Boom = require('boom');
 const oracledb = require('oracledb');
 const { single_document } = require('./document');
+const { strlen } = require('../../other/tools');
 
 // Helper funtion to get doc_article_id
 const get_article_id = async function (request, reply) {
@@ -24,7 +25,7 @@ const get_article_id = async function (request, reply) {
 		}
 
 	} catch(error) {
-		
+
 		return reply(Boom.badImplementation());
 
 	}
@@ -52,7 +53,7 @@ module.exports = [
 					service_time: Joi.string(),
 					service_difficulty: Joi.string(),
 					linked_doc_title: Joi.string(),
-					linked_doc_url: Joi.string()
+					linked_doc_url: Joi.string().allow('').allow(null)
 				}
 			}
 		}
@@ -161,12 +162,12 @@ async function patch_article(request, reply) {
 			SET article_type = NVL(:article_type,article_type), mfg_account_id = NVL(:mfg_account_id,mfg_account_id),
 			engine_type = NVL(:engine_type,engine_type), service_time = NVL(:service_time,service_time),
 			service_difficulty = NVL(:service_difficulty,service_difficulty), linked_doc_title = NVL(:linked_doc_title,linked_doc_title),
-			linked_doc_url = NVL(:linked_doc_url,linked_doc_url)
+			linked_doc_url = NVLC(:linked_doc_url, :linked_doc_url_len, linked_doc_url)
 			WHERE doc_id = :doc_id
 		`;
 		update_article = await request.app.db.execute(qry_update_article, {doc_id: request.params.doc_id, article_type: p.article_type,
 			mfg_account_id: p.mfg_account_id, engine_type: p.engine_type, service_time: p.service_time, service_difficulty: p.service_difficulty,
-			linked_doc_title: p.linked_doc_title, linked_doc_url: p.linked_doc_url},
+			linked_doc_title: p.linked_doc_title, linked_doc_url: p.linked_doc_url, linked_doc_url_len: strlen(p.linked_doc_url)},
 			{autoCommit: true});
 
 		// Get the updated document
@@ -174,7 +175,7 @@ async function patch_article(request, reply) {
 		return reply(single_doc);
 
 	} catch(error) {
-		
+
 		console.log(error);
 		return reply(error);
 
@@ -214,7 +215,7 @@ async function post_model(request, reply) {
 
 
 	} catch(error) {
-		
+
 		console.log(error);
 		return reply(error);
 
@@ -248,7 +249,7 @@ async function delete_model(request, reply) {
 		}
 
 	} catch(error) {
-		
+
 		console.log(error);
 		return reply(error);
 
@@ -281,7 +282,7 @@ async function get_product(request, reply) {
 		}
 
 	} catch(error) {
-		
+
 		console.log(error);
 		return reply(error);
 
@@ -315,7 +316,7 @@ async function post_product(request, reply) {
 		}
 
 	} catch(error) {
-		
+
 		// Check for an Oracle constraint error
 		if (error.message.split(':')[0] == 'ORA-00001') {
 			console.log(error);
@@ -354,7 +355,7 @@ async function delete_product(request, reply) {
 		}
 
 	} catch(error) {
-		
+
 		console.log(error);
 		return reply(error);
 
