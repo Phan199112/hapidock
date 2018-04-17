@@ -1,6 +1,7 @@
 const Joi = require('joi');
 const Boom = require('boom');
 const oracledb = require('oracledb');
+const { strlen } = require('../../other/tools');
 
 module.exports = [
 	{
@@ -12,8 +13,8 @@ module.exports = [
 			auth: 'jwt',
 			tags: ['api'],
 			validate: {
-				payload: { 
-					doc_group: Joi.string().required().valid(['general','tech_article']), 
+				payload: {
+					doc_group: Joi.string().required().valid(['general','tech_article']),
 					doc_key: Joi.string().required(),
 					title: Joi.string().required(),
 					content: Joi.string(),
@@ -52,13 +53,13 @@ module.exports = [
 				params: {
 					doc_id : Joi.number().required().description('Document ID')
 				},
-				payload: { 
-					title: Joi.string(),
-					content: Joi.string(),
+				payload: {
+					title: Joi.string().allow('').allow(null),
+					content: Joi.string().allow('').allow(null),
 					show_steps: Joi.number(),
 					priority: Joi.number(),
-					meta_title: Joi.string(),
-					meta_description: Joi.string(),
+					meta_title: Joi.string().allow('').allow(null),
+					meta_description: Joi.string().allow('').allow(null),
 					status: Joi.string().valid(['draft','review','published'])
 				}
 			}
@@ -125,7 +126,7 @@ async function post_document(request, reply) {
 		return reply(single_doc);
 
 	} catch(error) {
-		
+
 		console.log(error);
 		return reply(error);
 
@@ -137,9 +138,9 @@ async function post_document(request, reply) {
 async function get_document(request, reply) {
 
 	try {
-		
+
 		single_doc = await single_document(request.app.db, request.params.doc_id)
-		
+
 		if (single_doc) {
 			return reply(single_doc);
 		} else {
@@ -147,7 +148,7 @@ async function get_document(request, reply) {
 		}
 
 	} catch(error) {
-		
+
 		console.log(error);
 		return reply(error);
 
@@ -170,17 +171,22 @@ async function patch_document(request, reply) {
 		if (user_type == 'acai' && p.status == 'published') {
 			return reply(Boom.forbidden('User not allowed to publish document'));
 		}
-
 		// Update a document
 		const qry_update_doc = `
 			UPDATE doc
-			SET date_updated = sysdate, title = NVL(:title,title), content = NVL(:content,content), show_steps = NVL(:show_steps,show_steps),
-				priority = NVL(:priority,priority), meta_title = NVL(:meta_title,meta_title), meta_description = NVL(:meta_description,meta_description),
-				status = NVL(:status,status)
+			SET date_updated = sysdate, title = NVLC(:title, :title_len, title), 
+			content = NVLC(:content,:content_len, content), show_steps = NVL(:show_steps,show_steps),
+			priority = NVL(:priority,priority), 
+			meta_title = NVLC(:meta_title, :meta_title_len, meta_title), 
+			meta_description = NVLC(:meta_description, :meta_description_len, meta_description),
+			status = NVL(:status, status)
 			WHERE doc_id = :doc_id
 		`;
-		update_doc = await request.app.db.execute(qry_update_doc, {doc_id: request.params.doc_id, title: p.title, content: p.content,
-			show_steps: p.show_steps, priority: p.priority, meta_title: p.meta_title, meta_description: p.meta_description,
+		update_doc = await request.app.db.execute(qry_update_doc, {doc_id: request.params.doc_id, title: p.title,
+			title_len: strlen(p.title), content: p.content, content_len: strlen(p.content),
+			show_steps: p.show_steps, priority: p.priority,
+			meta_title: p.meta_title, meta_title_len: strlen(p.meta_title),
+			meta_description: p.meta_description, meta_description_len: strlen(p.meta_description),
 			status: p.status},
 			{autoCommit: true});
 
@@ -190,10 +196,10 @@ async function patch_document(request, reply) {
 			// Get the updated document
 			single_doc = await single_document(request.app.db, request.params.doc_id);
 			return reply(single_doc);
-		}	
+		}
 
 	} catch(error) {
-		
+
 		console.log(error);
 		return reply(error);
 
@@ -223,7 +229,7 @@ async function delete_document(request, reply) {
 
 
 	} catch(error) {
-		
+
 		// Check for an Oracle constraint error
 		if (error.message.split(':')[0] == 'ORA-02292') {
 			console.log(error);
@@ -337,7 +343,7 @@ async function single_document(oracledb, doc_id, return_type) {
 		return doc[0];
 
 	} catch(error) {
-		
+
 		console.log(error);
 		return error;
 
