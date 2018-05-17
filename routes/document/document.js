@@ -280,8 +280,10 @@ async function single_document(oracledb, doc_id, return_type) {
 
 			// Document:Tags
 			const tags_query = `
-				SELECT tag "tag"
-				FROM doc_tags WHERE doc_id = ${ doc_id }
+				SELECT t1.tag_id, t1.name
+				FROM doc_tag t1, doc_tags t2
+				WHERE t1.tag_id = t2.tag_id
+				AND t2.doc_id = ${ doc_id }
 			`;
 			const tags_result = await oracledb.execute(tags_query);
 			const tags = tags_result.rows[0];
@@ -324,7 +326,7 @@ async function single_document(oracledb, doc_id, return_type) {
 			sections.map(v => v.images = images.filter(i => i.doc_section_id == v.section_id)); // Map Images to Section
 			doc.map(v => v.images = images.filter(i => i.doc_id == v.doc_id && i.doc_section_id == null)); // Map Images to Document
 			doc.map(v => v.sections = sections); // Map Sections to Single Document
-			doc.map(v => v.tags = tags); // Map Tags to Single Document
+			doc.map(v => v.tags = tags || []); // Map Tags to Single Document
 			doc[0]['tech_article'] = article || {}; // Add Tech Article to Single Document
 		}
 
