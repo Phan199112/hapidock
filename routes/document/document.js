@@ -13,7 +13,7 @@ module.exports = [
 			tags: ['api'],
 			validate: {
 				payload: { 
-					doc_group: Joi.string().required().valid(['general','tech_article']), 
+					doc_group: Joi.string().required().valid(['general','support','tech_article']),
 					doc_key: Joi.string().required(),
 					title: Joi.string().required(),
 					content: Joi.string(),
