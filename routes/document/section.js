@@ -18,7 +18,8 @@ module.exports = [
 				},
 				payload: { 
 					title: Joi.string().required(), 
-					content: Joi.string().required()
+					content: Joi.string().required(),
+					content_html: Joi.string().required()
 				}
 			}
 		}
@@ -38,7 +39,8 @@ module.exports = [
 				},
 				payload: { 
 					title: Joi.string(), 
-					content: Joi.string()
+					content: Joi.string(),
+					content_html: Joi.string()
 				}
 			}
 		}
@@ -67,13 +69,14 @@ async function post_section(request, reply) {
 
 		// Insert new section
 		const qry_insert_section = `
-			INSERT INTO doc_sections(doc_id, title, content, position)
-			VALUES(:doc_id, :title, :content,
+			INSERT INTO doc_sections(doc_id, title, content, content_html, position)
+			VALUES(:doc_id, :title, :content, :content_html,
 				(SELECT NVL(MAX(position),0) + 1 FROM doc_sections WHERE doc_id = :doc_id)
 			)
 		`;
 		insert_section = await request.app.db.execute(qry_insert_section, {doc_id: request.params.doc_id,
-			title: request.payload.title, content: request.payload.content }, {autoCommit: true});
+			title: request.payload.title, content: request.payload.content, content_html: request.payload.content_html },
+			{autoCommit: true});
 
 		// Get the updated document
 		single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
@@ -101,12 +104,13 @@ async function patch_section(request, reply) {
 		// Modify a section
 		const qry_patch_section = `
 			UPDATE doc_sections
-			SET title = :title, content = :content
+			SET title = :title, content = :content, content_html = :content_html
 			WHERE doc_id = :doc_id 
 			AND doc_section_id = :section_id
 		`;
 		const patch_section = await request.app.db.execute(qry_patch_section, {doc_id: request.params.doc_id,
-			section_id: request.params.section_id, title: request.payload.title, content: request.payload.content},
+			section_id: request.params.section_id, title: request.payload.title, content: request.payload.content,
+			content_html: request.payload.content_html},
 			{autoCommit: true});
 
 		if (patch_section.rowsAffected == 0) {

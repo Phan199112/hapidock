@@ -17,6 +17,7 @@ module.exports = [
 					doc_key: Joi.string().required(),
 					title: Joi.string().required(),
 					content: Joi.string(),
+					content_html: Joi.string(),
 					show_steps: Joi.number(),
 					priority: Joi.number(),
 					meta_title: Joi.string(),
@@ -55,6 +56,7 @@ module.exports = [
 				payload: { 
 					title: Joi.string(),
 					content: Joi.string(),
+					content_html: Joi.string(),
 					show_steps: Joi.number(),
 					priority: Joi.number(),
 					meta_title: Joi.string(),
@@ -98,14 +100,15 @@ async function post_document(request, reply) {
 
 		// Insert new document
 		const qry_insert_doc = `
-			INSERT INTO doc(user_id, user_type, doc_group, doc_key, doc_link, title, content, show_steps, priority, meta_title, meta_description, status)
-			VALUES(:user_id, :user_type, :doc_group, :doc_key, :doc_link, :title, :content, :show_steps, :priority, :meta_title, :meta_description, 'draft')
+			INSERT INTO doc(user_id, user_type, doc_group, doc_key, doc_link, title, content, content_html, show_steps, priority, meta_title, meta_description, status)
+			VALUES(:user_id, :user_type, :doc_group, :doc_key, :doc_link, :title, :content, :content_html, :show_steps, :priority, :meta_title, :meta_description, 'draft')
 			RETURNING doc_id INTO :new_doc_id
 		`;
 		insert_doc = await request.app.db.execute(qry_insert_doc, {user_id: user_id, user_type: user_type,
 			doc_group: p.doc_group, doc_key: p.doc_key, doc_link: doc_link, title: p.title, content: p.content,
-			show_steps: p.show_steps, priority: p.priority, meta_title: p.meta_title, meta_description: p.meta_description,
-			new_doc_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT } }, {autoCommit: true});
+			content_html: p.content_html, show_steps: p.show_steps, priority: p.priority, meta_title: p.meta_title,
+			meta_description: p.meta_description, new_doc_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT } },
+			{autoCommit: true});
 
 		// Get the inserted document using :new_doc_id
 		const new_doc_id = Number(insert_doc.outBinds.new_doc_id);
@@ -174,14 +177,14 @@ async function patch_document(request, reply) {
 		// Update a document
 		const qry_update_doc = `
 			UPDATE doc
-			SET date_updated = sysdate, title = NVL(:title,title), content = NVL(:content,content), show_steps = NVL(:show_steps,show_steps),
-				priority = NVL(:priority,priority), meta_title = NVL(:meta_title,meta_title), meta_description = NVL(:meta_description,meta_description),
-				status = NVL(:status,status)
+			SET date_updated = sysdate, title = NVL(:title,title), content = NVL(:content,content), content_html = NVL(:content_html,content_html),
+				show_steps = NVL(:show_steps,show_steps), priority = NVL(:priority,priority), meta_title = NVL(:meta_title,meta_title),
+				meta_description = NVL(:meta_description,meta_description), status = NVL(:status,status)
 			WHERE doc_id = :doc_id
 		`;
 		update_doc = await request.app.db.execute(qry_update_doc, {doc_id: request.params.doc_id, title: p.title, content: p.content,
-			show_steps: p.show_steps, priority: p.priority, meta_title: p.meta_title, meta_description: p.meta_description,
-			status: p.status},
+			content_html: p.content_html, show_steps: p.show_steps, priority: p.priority, meta_title: p.meta_title,
+			meta_description: p.meta_description, status: p.status},
 			{autoCommit: true});
 
 		if (update_doc.rowsAffected == 0) {
@@ -247,8 +250,8 @@ async function single_document(oracledb, doc_id, return_type) {
 
 		const doc_query = `
 			SELECT doc_id "doc_id", doc_group "doc_group", doc_key "doc_key", doc_link "doc_link", date_added "date_added", date_updated "date_updated",
-				title "title", content "content", show_steps "show_steps", priority "priority", meta_title "meta_title", meta_description "meta_description",
-				status "status"
+				title "title", content "content", content_html "content_html", show_steps "show_steps", priority "priority", meta_title "meta_title",
+				meta_description "meta_description", status "status"
 			FROM doc WHERE doc_id = :doc_id
 		`;
 		const doc_result = await oracledb.execute(doc_query, {doc_id: doc_id}, {outFormat: 4002});
@@ -260,7 +263,7 @@ async function single_document(oracledb, doc_id, return_type) {
 
 			// Document Sections
 			const section_query = `
-				SELECT doc_section_id "section_id", title "title", content "content"
+				SELECT doc_section_id "section_id", title "title", content "content", content_html "content_html"
 				FROM doc_sections WHERE doc_id = ${ doc_id }
 				ORDER BY position
 			`;
@@ -333,7 +336,9 @@ async function single_document(oracledb, doc_id, return_type) {
 		// Remove 'content' from document
 		if (return_type == 'simple') {
 			doc[0]['content'] = '';
+			doc[0]['content_html'] = '';
 			doc[0]['sections'].map(v => v.content = '');
+			doc[0]['sections'].map(v => v.content_html = '');
 		}
 
 		return doc[0];
