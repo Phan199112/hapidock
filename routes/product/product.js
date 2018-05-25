@@ -78,7 +78,7 @@ async function post_product(request, reply) {
             p.category_id = existing_product_group.category_id;
         } else {
             if (p.sku != p.group_sku)
-                return reply(Boom.notFound(`The group_sku ${p.group_sku} could not be found.`));
+                return reply(Boom.conflict(`The group_sku ${p.group_sku} could not be found.`));
 
         }
 
