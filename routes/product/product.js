@@ -56,8 +56,6 @@ async function post_product(request, reply) {
 
     try {
 
-        let message = "";
-
         const p = request.payload;
 
         // Check for existing product group
@@ -78,8 +76,6 @@ async function post_product(request, reply) {
             p.long_desc = existing_product_group.long_desc;
             p.product_type = existing_product_group.product_type;
             p.category_id = existing_product_group.category_id;
-
-            message = "This product was assigned to an existing group."
         } else {
             if (p.sku != p.group_sku)
                 return reply(Boom.notFound(`The group_sku ${p.group_sku} could not be found.`));
