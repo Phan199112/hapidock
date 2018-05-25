@@ -89,13 +89,13 @@ async function post_product(request, reply) {
         // Insert new product
         const qry_insert_product = `
             INSERT INTO products(mfg_account_id, group_sku, group_name, short_desc, long_desc, product_type, category_id, sku, name, base_price, dropship_cost, retail_price, core_charge, display)
-            VALUES(:mfg_account_id, :group_sku, :group_name, :short_desc, :long_desc, :product_type, :category_id, :sku, :name, :base_price, :dropship_cost, :retail_price, :core_charge, :display)
+            VALUES(:mfg_account_id, :group_sku, :group_name, :short_desc, :long_desc, :product_type, :category_id, :sku, :name, :base_price, :dropship_cost, :retail_price, :core_charge, 1)
             RETURNING product_id INTO :new_product_id
         `;
         insert_product = await request.app.db.execute(qry_insert_product, {mfg_account_id: p.mfg_account_id,
             group_sku: p.group_sku, group_name: p.group_name, short_desc: p.short_desc, long_desc: p.long_desc,
             product_type: p.product_type, category_id: p.category_id, sku: p.sku, name: p.name, base_price: p.base_price,
-            dropship_cost: p.dropship_cost, retail_price: p.retail_price, core_charge: p.core_charge, display: p.display,
+            dropship_cost: p.dropship_cost, retail_price: p.retail_price, core_charge: p.core_charge,
             new_product_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT } });
 
         // Get the inserted product using :new_product_id
