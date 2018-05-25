@@ -119,7 +119,14 @@ async function post_product(request, reply) {
 
         // Get the product group
         prod_group = await product_group(request.app.db, p.mfg_account_id, p.group_sku);
-        return reply(prod_group);
+        
+        // If there is an existing product group return a 206 status code
+        if (existing_product_group) {
+            return reply(prod_group).code(206);
+        }
+        else {
+            return reply(prod_group);
+        }
 
     } catch(error) {
         
