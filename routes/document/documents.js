@@ -16,7 +16,8 @@ module.exports = [
 			validate: {
 				query: {
 					doc_group : Joi.string().required().description('Document group'),
-					doc_key : Joi.string().description('Document key')
+					doc_key : Joi.string().description('Document key'),
+					tag_id : Joi.string().description('Tag ID')
 				}
 			}
 		}
@@ -42,6 +43,7 @@ async function get_documents(request, reply) {
 			FROM doc
 			WHERE doc_group = :doc_group
 			AND (doc_key = :doc_key OR :doc_key IS NULL)
+			AND (doc_id IN (SELECT doc_id FROM doc_tags WHERE tag_id = :tag_id) OR :tag_id IS NULL)
 			AND (
 				(:isAuthenticated = 1 AND :user_type = 'acai' AND user_id = to_char(:user_id))
 				OR (:isAuthenticated = 1 AND :user_type = 'pilot')
@@ -49,7 +51,7 @@ async function get_documents(request, reply) {
 			)
 		`;
 		const doc_result = await request.app.db.execute(doc_query, {isAuthenticated: isAuthenticated, user_id: user_id, user_type: user_type,
-			doc_group: request.query.doc_group, doc_key: request.query.doc_key}, {outFormat: 4002});
+			doc_group: request.query.doc_group, doc_key: request.query.doc_key, tag_id: request.query.tag_id}, {outFormat: 4002});
 		const doc = doc_result.rows
 
 		if (doc.length == 0) {
