@@ -32,7 +32,10 @@ module.exports = [
 		config: {
 			handler: get_document,
 			description: 'Get a single document',
-			auth: 'jwt',
+			auth: {
+				strategy: 'jwt',
+				mode: 'optional'
+	        },
 			tags: ['api'],
 			validate: {
 				params: {
@@ -140,10 +143,19 @@ async function post_document(request, reply) {
 async function get_document(request, reply) {
 
 	try {
-		
-		single_doc = await single_document(request.app.db, request.params.doc_id)
-		
-		if (single_doc) {
+
+		// Verify we have access to the document
+        const isAuthenticated = +request.auth.isAuthenticated;
+        const doc_query = `
+			SELECT doc_id FROM doc
+			WHERE doc_id = :doc_id
+			AND (:isAuthenticated = 1 OR status = 'published')
+		`;
+		const doc_result = await request.app.db.execute(doc_query, {isAuthenticated: isAuthenticated, doc_id: request.params.doc_id}, {outFormat: 4002});
+		const doc = doc_result.rows
+
+		if (doc.length != 0) {
+			single_doc = await single_document(request.app.db, request.params.doc_id)
 			return reply(single_doc);
 		} else {
 			return reply(Boom.notFound('Document not found'));
