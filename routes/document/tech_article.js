@@ -169,11 +169,11 @@ async function patch_article(request, reply) {
 		`;
 		update_article = await request.app.db.execute(qry_update_article, {doc_id: request.params.doc_id, article_type: p.article_type,
 			mfg_account_id: p.mfg_account_id,
-            engine_type: p.engine_type, engine_type_len: strlen(p.engine_type),
-            service_time: p.service_time, service_time_len: strlen(p.service_time),
-            service_difficulty: p.service_difficulty, service_difficulty_len: strlen(p.service_difficulty),
+      engine_type: p.engine_type, engine_type_len: strlen(p.engine_type),
+      service_time: p.service_time, service_time_len: strlen(p.service_time),
+      service_difficulty: p.service_difficulty, service_difficulty_len: strlen(p.service_difficulty),
 			linked_doc_title: p.linked_doc_title, linked_doc_title_len: strlen(p.linked_doc_title),
-            linked_doc_url: p.linked_doc_url, linked_doc_url_len: strlen(p.linked_doc_url)},
+      linked_doc_url: p.linked_doc_url, linked_doc_url_len: strlen(p.linked_doc_url)},
 			{autoCommit: true});
 
 		// Get the updated document

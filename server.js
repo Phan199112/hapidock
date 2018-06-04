@@ -99,10 +99,10 @@ const provision = async () => {
         await server.start();
 
         console.log('Server running at:', server.info.uri);
-        
+
 
     } catch(error) {
-        
+
         console.log(error);
 
     }
@@ -127,18 +127,18 @@ const validate = async function (decoded, request, callback) {
             `;
             const validate_user = await request.app.db.execute(qry_validate_user, {doc_id: request.params.doc_id,
                 user_id: decoded.userid, role: decoded.role});
-            
+
             const is_authorized = validate_user.rows.length;
 
             if (!is_authorized) {
                 return callback(null, false);
             }
         }
-        
+
         return callback(null, true);
 
     } catch(error) {
-        
+
         console.log(error);
 
     }
