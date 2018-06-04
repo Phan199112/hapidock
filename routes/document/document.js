@@ -14,10 +14,11 @@ module.exports = [
 			tags: ['api'],
 			validate: {
 				payload: {
-					doc_group: Joi.string().required().valid(['general','tech_article']),
+					doc_group: Joi.string().required().valid(['general','support','tech_article']),
 					doc_key: Joi.string().required(),
 					title: Joi.string().required(),
 					content: Joi.string(),
+					content_html: Joi.string(),
 					show_steps: Joi.number(),
 					priority: Joi.number(),
 					meta_title: Joi.string(),
@@ -32,7 +33,10 @@ module.exports = [
 		config: {
 			handler: get_document,
 			description: 'Get a single document',
-			auth: 'jwt',
+			auth: {
+				strategy: 'jwt',
+				mode: 'optional'
+	        },
 			tags: ['api'],
 			validate: {
 				params: {
@@ -56,6 +60,7 @@ module.exports = [
 				payload: {
 					title: Joi.string().allow('').allow(null),
 					content: Joi.string().allow('').allow(null),
+					content_html: Joi.string(),
 					show_steps: Joi.number(),
 					priority: Joi.number(),
 					meta_title: Joi.string().allow('').allow(null),
@@ -99,14 +104,15 @@ async function post_document(request, reply) {
 
 		// Insert new document
 		const qry_insert_doc = `
-			INSERT INTO doc(user_id, user_type, doc_group, doc_key, doc_link, title, content, show_steps, priority, meta_title, meta_description, status)
-			VALUES(:user_id, :user_type, :doc_group, :doc_key, :doc_link, :title, :content, :show_steps, :priority, :meta_title, :meta_description, 'draft')
+			INSERT INTO doc(user_id, user_type, doc_group, doc_key, doc_link, title, content, content_html, show_steps, priority, meta_title, meta_description, status)
+			VALUES(:user_id, :user_type, :doc_group, :doc_key, :doc_link, :title, :content, :content_html, :show_steps, :priority, :meta_title, :meta_description, 'draft')
 			RETURNING doc_id INTO :new_doc_id
 		`;
 		insert_doc = await request.app.db.execute(qry_insert_doc, {user_id: user_id, user_type: user_type,
 			doc_group: p.doc_group, doc_key: p.doc_key, doc_link: doc_link, title: p.title, content: p.content,
-			show_steps: p.show_steps, priority: p.priority, meta_title: p.meta_title, meta_description: p.meta_description,
-			new_doc_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT } }, {autoCommit: true});
+			content_html: p.content_html, show_steps: p.show_steps, priority: p.priority, meta_title: p.meta_title,
+			meta_description: p.meta_description, new_doc_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT } },
+			{autoCommit: true});
 
 		// Get the inserted document using :new_doc_id
 		const new_doc_id = Number(insert_doc.outBinds.new_doc_id);
@@ -139,9 +145,18 @@ async function get_document(request, reply) {
 
 	try {
 
-		single_doc = await single_document(request.app.db, request.params.doc_id)
+		// Verify we have access to the document
+        const isAuthenticated = +request.auth.isAuthenticated;
+        const doc_query = `
+			SELECT doc_id FROM doc
+			WHERE doc_id = :doc_id
+			AND (:isAuthenticated = 1 OR status = 'published')
+		`;
+		const doc_result = await request.app.db.execute(doc_query, {isAuthenticated: isAuthenticated, doc_id: request.params.doc_id}, {outFormat: 4002});
+		const doc = doc_result.rows
 
-		if (single_doc) {
+		if (doc.length != 0) {
+			single_doc = await single_document(request.app.db, request.params.doc_id)
 			return reply(single_doc);
 		} else {
 			return reply(Boom.notFound('Document not found'));
@@ -171,23 +186,18 @@ async function patch_document(request, reply) {
 		if (user_type == 'acai' && p.status == 'published') {
 			return reply(Boom.forbidden('User not allowed to publish document'));
 		}
+
 		// Update a document
 		const qry_update_doc = `
 			UPDATE doc
-			SET date_updated = sysdate, title = NVLC(:title, :title_len, title), 
-			content = NVLC(:content,:content_len, content), show_steps = NVL(:show_steps,show_steps),
-			priority = NVL(:priority,priority), 
-			meta_title = NVLC(:meta_title, :meta_title_len, meta_title), 
-			meta_description = NVLC(:meta_description, :meta_description_len, meta_description),
-			status = NVL(:status, status)
+			SET date_updated = sysdate, title = NVL(:title,title), content = NVL(:content,content), content_html = NVL(:content_html,content_html),
+				show_steps = NVL(:show_steps,show_steps), priority = NVL(:priority,priority), meta_title = NVL(:meta_title,meta_title),
+				meta_description = NVL(:meta_description,meta_description), status = NVL(:status,status)
 			WHERE doc_id = :doc_id
 		`;
-		update_doc = await request.app.db.execute(qry_update_doc, {doc_id: request.params.doc_id, title: p.title,
-			title_len: strlen(p.title), content: p.content, content_len: strlen(p.content),
-			show_steps: p.show_steps, priority: p.priority,
-			meta_title: p.meta_title, meta_title_len: strlen(p.meta_title),
-			meta_description: p.meta_description, meta_description_len: strlen(p.meta_description),
-			status: p.status},
+		update_doc = await request.app.db.execute(qry_update_doc, {doc_id: request.params.doc_id, title: p.title, content: p.content,
+			content_html: p.content_html, show_steps: p.show_steps, priority: p.priority, meta_title: p.meta_title,
+			meta_description: p.meta_description, status: p.status},
 			{autoCommit: true});
 
 		if (update_doc.rowsAffected == 0) {
@@ -253,8 +263,8 @@ async function single_document(oracledb, doc_id, return_type) {
 
 		const doc_query = `
 			SELECT doc_id "doc_id", doc_group "doc_group", doc_key "doc_key", doc_link "doc_link", date_added "date_added", date_updated "date_updated",
-				title "title", content "content", show_steps "show_steps", priority "priority", meta_title "meta_title", meta_description "meta_description",
-				status "status"
+				title "title", content "content", content_html "content_html", show_steps "show_steps", priority "priority", meta_title "meta_title",
+				meta_description "meta_description", status "status"
 			FROM doc WHERE doc_id = :doc_id
 		`;
 		const doc_result = await oracledb.execute(doc_query, {doc_id: doc_id}, {outFormat: 4002});
@@ -266,7 +276,7 @@ async function single_document(oracledb, doc_id, return_type) {
 
 			// Document Sections
 			const section_query = `
-				SELECT doc_section_id "section_id", title "title", content "content"
+				SELECT doc_section_id "section_id", title "title", content "content", content_html "content_html"
 				FROM doc_sections WHERE doc_id = ${ doc_id }
 				ORDER BY position
 			`;
@@ -286,8 +296,10 @@ async function single_document(oracledb, doc_id, return_type) {
 
 			// Document:Tags
 			const tags_query = `
-				SELECT tag "tag"
-				FROM doc_tags WHERE doc_id = ${ doc_id }
+				SELECT t1.tag_id, t1.name
+				FROM doc_tag t1, doc_tags t2
+				WHERE t1.tag_id = t2.tag_id
+				AND t2.doc_id = ${ doc_id }
 			`;
 			const tags_result = await oracledb.execute(tags_query);
 			const tags = tags_result.rows[0];
@@ -330,14 +342,16 @@ async function single_document(oracledb, doc_id, return_type) {
 			sections.map(v => v.images = images.filter(i => i.doc_section_id == v.section_id)); // Map Images to Section
 			doc.map(v => v.images = images.filter(i => i.doc_id == v.doc_id && i.doc_section_id == null)); // Map Images to Document
 			doc.map(v => v.sections = sections); // Map Sections to Single Document
-			doc.map(v => v.tags = tags); // Map Tags to Single Document
+			doc.map(v => v.tags = tags || []); // Map Tags to Single Document
 			doc[0]['tech_article'] = article || {}; // Add Tech Article to Single Document
 		}
 
 		// Remove 'content' from document
 		if (return_type == 'simple') {
 			doc[0]['content'] = '';
+			doc[0]['content_html'] = '';
 			doc[0]['sections'].map(v => v.content = '');
+			doc[0]['sections'].map(v => v.content_html = '');
 		}
 
 		return doc[0];
