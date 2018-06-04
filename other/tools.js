@@ -1,10 +1,11 @@
+module.exports = {};
 
-module.exports.strlen = strlen;
-
-function strlen(str) {
-    if (str == null) {
-        return null;
-    }
-
-    return str.length
-}
+/**
+ * Returns length of string, or null if string is null
+ *
+ * @param str
+ * @returns {null}
+ */
+module.exports.strlen = function (str) {
+    return (str == null) ? null : str.length
+};
