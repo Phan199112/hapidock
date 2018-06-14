@@ -309,13 +309,13 @@ async function single_document(oracledb, doc_id, return_type) {
 
 			// Document:Tags
 			const tags_query = `
-				SELECT t1.tag_id, t1.name
+				SELECT t1.tag_id "tag_id", t1.name "name"
 				FROM doc_tag t1, doc_tags t2
 				WHERE t1.tag_id = t2.tag_id
 				AND t2.doc_id = ${ doc_id }
 			`;
-			const tags_result = await oracledb.execute(tags_query);
-			const tags = tags_result.rows[0];
+			const tags_result = await oracledb.execute(tags_query, {}, {outFormat: 4002});
+			const tags = tags_result.rows;
 
 			// Document:Tech Article
 			const article_query = `
