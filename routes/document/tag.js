@@ -176,11 +176,22 @@ async function post_tag(request, reply) {
 		const qry_insert_tag = `
 			INSERT INTO doc_tag(tag_id, name)
 			VALUES(:tag_id, :name)
+			RETURNING tag_id, name INTO :new_tag_id, :new_name
 		`;
 		insert_tag = await request.app.db.execute(qry_insert_tag, {tag_id: tag_id,
-			name: request.payload.name }, {autoCommit: true});
+			name: request.payload.name, new_tag_id: { type: oracledb.VARCHAR2, dir: oracledb.BIND_OUT },
+			new_name: { type: oracledb.VARCHAR2, dir: oracledb.BIND_OUT } }, {autoCommit: true});
 
-		return reply('Tag created');
+		// Get the inserted document using :new_tag_id
+		const new_tag_id = String(insert_tag.outBinds.new_tag_id);
+		const new_name = String(insert_tag.outBinds.new_name);
+
+		const tag = {
+			"tag_id": new_tag_id,
+			"name": new_name
+		}
+
+		return reply(tag);
 
 	} catch(error) {
 		
