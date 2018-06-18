@@ -38,16 +38,22 @@ async function get_documents(request, reply) {
 		}
 
 		const doc_query = `
-			SELECT doc_id "doc_id", doc_group "doc_group", doc_key "doc_key", doc_link "doc_link", date_added "date_added", date_updated "date_updated",
-				title "title", priority "priority", status "status"
-			FROM doc
-			WHERE doc_group = :doc_group
-			AND (doc_key = :doc_key OR :doc_key IS NULL)
-			AND (doc_id IN (SELECT doc_id FROM doc_tags WHERE tag_id = :tag_id) OR :tag_id IS NULL)
+			SELECT d.doc_id "doc_id", d.doc_group "doc_group", d.doc_key "doc_key", d.doc_link "doc_link", d.date_added "date_added", d.date_updated "date_updated",
+			    d.title "title", d.priority "priority", d.status "status", i.thumbnail "thumbnail"
+			FROM doc d LEFT OUTER JOIN
+			    (
+			        SELECT doc_id, MIN(lg_image) KEEP (DENSE_RANK FIRST ORDER BY position) AS thumbnail
+			        FROM doc_images
+			        GROUP BY doc_id
+			    ) i
+			ON d.doc_id = i.doc_id
+			WHERE d.doc_group = :doc_group
+			AND (d.doc_key = :doc_key OR :doc_key IS NULL)
+			AND (d.doc_id IN (SELECT doc_id FROM doc_tags WHERE tag_id = :tag_id) OR :tag_id IS NULL)
 			AND (
-				(:isAuthenticated = 1 AND :user_type = 'acai' AND user_id = to_char(:user_id))
+				(:isAuthenticated = 1 AND :user_type = 'acai' AND d.user_id = to_char(:user_id))
 				OR (:isAuthenticated = 1 AND :user_type = 'pilot')
-				OR (:isAuthenticated = 0 AND status = 'published')
+				OR (:isAuthenticated = 0 AND d.status = 'published')
 			)
 		`;
 		const doc_result = await request.app.db.execute(doc_query, {isAuthenticated: isAuthenticated, user_id: user_id, user_type: user_type,
