@@ -338,10 +338,19 @@ async function single_document(oracledb, doc_id, return_type) {
 
 				// Document:Tech Article:Products
 				const products_query = `
-					SELECT p.product_id "product_id", a.account_name "mfg", p.sku "sku", p.name "name"
-					FROM doc_article_products d, products p, account a
+					SELECT p.product_id "product_id", a.account_name "mfg", p.sku "sku", p.name "name",
+					    p.product_url "product_url", i.base_price "base_price",
+					    NVL(t.thumbnail,'http://cdn.crowleymarine.com/media/images/crowleymarine/product/slug-medium.jpg') "thumbnail"
+					FROM doc_article_products d, products p, account a, dealer.dealer_inventory_2 i,
+					(
+					    SELECT product_id, MIN(lg_image) KEEP (DENSE_RANK FIRST ORDER BY priority) AS thumbnail
+					    FROM product_images
+					    GROUP BY product_id
+					) t
 					WHERE p.mfg_account_id = a.account_id
+					AND p.product_id = i.product_id
 					AND d.product_id = p.product_id
+					AND p.product_id = t.product_id (+)
 					AND d.doc_article_id = ${ article.doc_article_id }
 				`;
 				const products_result = await oracledb.execute(products_query, {}, {outFormat: 4002});
