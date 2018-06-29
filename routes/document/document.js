@@ -100,7 +100,7 @@ async function post_document(request, reply) {
 		const user_type = request.auth.credentials.role;
 
 		// Create a doc_link
-		const doc_link = `${p.doc_group}/${p.doc_key}`
+		const doc_link = `/d/${p.doc_group}/${p.doc_key}`
 
 		// Insert new document
 		const qry_insert_doc = `
