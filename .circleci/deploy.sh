@@ -9,6 +9,9 @@
 # S3_SECRET_ACCESS_KEY_DEV=
 # S3_BUCKET_DEV=
 # REDIS_HOST_DEV=
+# ELASTICSEARCH_HOST_DEV
+# ELASTICSEARCH_USERNAME_DEV
+# ELASTICSEARCH_PASSWORD_DEV
 # USERNAME_PRO=
 # PASSWORD_PRO=
 # CONNECT_STRING_PRO=
@@ -16,6 +19,9 @@
 # S3_SECRET_ACCESS_KEY_PRO=
 # S3_BUCKET_PRO=
 # REDIS_HOST_PRO=
+# ELASTICSEARCH_HOST_PRO
+# ELASTICSEARCH_USERNAME_PRO
+# ELASTICSEARCH_PASSWORD_PRO
 
 if [ "${CIRCLE_BRANCH}" == "master" ]; then
   DOCKER_IMAGE='968852064305.dkr.ecr.us-east-1.amazonaws.com/pilot-api2:latest'
@@ -51,7 +57,10 @@ if [ "${CIRCLE_BRANCH}" == "master" ]; then
         { "name": "S3_ACCESS_KEY_ID", "value": "%s" },
         { "name": "S3_SECRET_ACCESS_KEY", "value": "%s" },
         { "name": "S3_BUCKET", "value": "%s" },
-        { "name": "REDIS_HOST", "value": "%s" }
+        { "name": "REDIS_HOST", "value": "%s" },
+        { "name": "ELASTICSEARCH_HOST", "value": "%s" },
+        { "name": "ELASTICSEARCH_USERNAME", "value": "%s" },
+        { "name": "ELASTICSEARCH_PASSWORD", "value": "%s" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
@@ -70,7 +79,7 @@ if [ "${CIRCLE_BRANCH}" == "master" ]; then
   # from our docker image. In the future this may not be necessary
   function deploy_ecs {
       # Replace variables in container_template
-      container_def=$(printf "$container_template" $DOCKER_IMAGE $2 $1 $3 $4 $5 $6 $7 $8 $9)
+      container_def=$(printf "$container_template" $DOCKER_IMAGE $2 $1 $3 $4 $5 $6 $7 $8 $9 $10 $11 $12)
 
       # Register task definition
       json=$(aws ecs register-task-definition --container-definitions "$container_def" --family "pilot-api2-$1" --network-mode "host")
@@ -83,9 +92,9 @@ if [ "${CIRCLE_BRANCH}" == "master" ]; then
   }
 
   # Deploy Staging
-  deploy_ecs staging $DEV_CONTAINER $USERNAME_DEV $PASSWORD_DEV $CONNECT_STRING_DEV $S3_ACCESS_KEY_ID_DEV $S3_SECRET_ACCESS_KEY_DEV $S3_BUCKET_DEV $REDIS_HOST_DEV
+  deploy_ecs staging $DEV_CONTAINER $USERNAME_DEV $PASSWORD_DEV $CONNECT_STRING_DEV $S3_ACCESS_KEY_ID_DEV $S3_SECRET_ACCESS_KEY_DEV $S3_BUCKET_DEV $REDIS_HOST_DEV $ELASTICSEARCH_HOST_DEV $ELASTICSEARCH_USERNAME_DEV $ELASTICSEARCH_PASSWORD_DEV
 
   # Deploy Production
-  deploy_ecs production $PRO_CONTAINER $USERNAME_PRO $PASSWORD_PRO $CONNECT_STRING_PRO $S3_ACCESS_KEY_ID_PRO $S3_SECRET_ACCESS_KEY_PRO $S3_BUCKET_PRO $REDIS_HOST_PRO
+  deploy_ecs production $PRO_CONTAINER $USERNAME_PRO $PASSWORD_PRO $CONNECT_STRING_PRO $S3_ACCESS_KEY_ID_PRO $S3_SECRET_ACCESS_KEY_PRO $S3_BUCKET_PRO $REDIS_HOST_PRO $ELASTICSEARCH_HOST_PRO $ELASTICSEARCH_USERNAME_PRO $ELASTICSEARCH_PASSWORD_PRO
 
 fi
