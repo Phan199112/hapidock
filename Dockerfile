@@ -33,6 +33,7 @@ RUN npm install pm2 -g
 # Copy app
 COPY ./routes /usr/src/app/routes
 COPY ./other /usr/src/app/other
+COPY ./plugins /usr/src/app/plugins
 COPY ./server.js ./start.sh /usr/src/app/
 
 # Start Node app

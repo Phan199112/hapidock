@@ -10,6 +10,7 @@ services:
     # is no way to exclude node_modules
     volumes:
      - ./routes:/usr/src/app/routes
+     - ./plugins:/usr/src/app/plugins
      - ./server.js:/usr/src/app/server.js
     depends_on:
      - redis

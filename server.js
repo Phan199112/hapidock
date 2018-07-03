@@ -79,6 +79,13 @@ const provision = async () => {
                     'options': {
                         host: process.env.REDIS_HOST
                     }
+                },
+                {
+                    'register': require('./plugins/es.js'),
+                    'options': {
+                        host: process.env.ELASTICSEARCH_HOST,
+                        httpAuth: `${process.env.ELASTICSEARCH_USERNAME}:${process.env.ELASTICSEARCH_PASSWORD}`
+                    }
                 }
             ]
         );
