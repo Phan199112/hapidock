@@ -39,7 +39,10 @@ async function get_documents(request, reply) {
 
 		const doc_query = `
 			SELECT d.doc_id "doc_id", d.doc_group "doc_group", d.doc_key "doc_key", d.doc_link "doc_link", d.date_added "date_added", d.date_updated "date_updated",
-			    d.title "title", d.priority "priority", d.status "status", i.thumbnail "thumbnail", t.tags "tags"
+			    d.title "title", d.priority "priority", d.status "status", i.thumbnail "thumbnail", t.tags "tags",
+			    NVL2(a.mfg_account_id,
+			    	'{"mfg_account_id":'||a.mfg_account_id||',"article_type":"'||a.article_type||'"}',
+			    	'{}') "tech_article"
 			FROM doc d LEFT OUTER JOIN
 			    (
 			        SELECT doc_id, MIN(lg_image) KEEP (DENSE_RANK FIRST ORDER BY position) AS thumbnail
@@ -58,6 +61,8 @@ async function get_documents(request, reply) {
 		        GROUP BY doc_id
 		    ) t
 		    ON d.doc_id = t.doc_id
+		    LEFT OUTER JOIN doc_article a
+		    ON d.doc_id = a.doc_id
 			WHERE d.doc_group = :doc_group
 			AND (d.doc_key = :doc_key OR :doc_key IS NULL)
 			AND (d.doc_id IN (SELECT doc_id FROM doc_tags WHERE tag_id = :tag_id) OR :tag_id IS NULL)
@@ -73,6 +78,9 @@ async function get_documents(request, reply) {
 
 		// Convert tags string to JSON array
 		doc.map(v => v.tags = (v.tags ? JSON.parse(v.tags) : []));
+
+		// Convert tech_article string to JSON object
+		doc.map(v => v.tech_article = JSON.parse(v.tech_article));
 
 		if (doc.length == 0) {
 			return reply(Boom.notFound('Document not found'));
