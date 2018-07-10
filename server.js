@@ -9,7 +9,7 @@ server.connection({
     host: '0.0.0.0',
     port: 3001,
     routes: {
-        cors: { origin: ['https://cart.crowleymarine.com', 'http://localhost'] }
+        cors: { origin: ['https://cart.crowleymarine.com', 'http://localhost', 'http://localhost:3000'] }
     }
 });
 
