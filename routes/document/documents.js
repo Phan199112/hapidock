@@ -39,7 +39,7 @@ async function get_documents(request, reply) {
 
 		const doc_query = `
 			SELECT d.doc_id "doc_id", d.doc_group "doc_group", d.doc_key "doc_key", d.doc_link "doc_link", d.date_added "date_added", d.date_updated "date_updated",
-			    d.title "title", d.priority "priority", d.status "status", i.thumbnail "thumbnail"
+			    d.title "title", d.priority "priority", d.status "status", i.thumbnail "thumbnail", t.tags "tags"
 			FROM doc d LEFT OUTER JOIN
 			    (
 			        SELECT doc_id, MIN(lg_image) KEEP (DENSE_RANK FIRST ORDER BY position) AS thumbnail
@@ -47,6 +47,17 @@ async function get_documents(request, reply) {
 			        GROUP BY doc_id
 			    ) i
 			ON d.doc_id = i.doc_id
+			LEFT OUTER JOIN
+		    (
+		        -- Build JSON array
+		        -- Can replace with a JSON function in 12.2
+		        SELECT doc_id, '['||LISTAGG('{"tag_id":"'||t1.tag_id||'","name":"'||name||'"}', ',')
+		        	WITHIN GROUP (ORDER BY name)||']' tags
+		        FROM doc_tags t1 JOIN doc_tag t2
+		        ON t1.tag_id = t2.tag_id
+		        GROUP BY doc_id
+		    ) t
+		    ON d.doc_id = t.doc_id
 			WHERE d.doc_group = :doc_group
 			AND (d.doc_key = :doc_key OR :doc_key IS NULL)
 			AND (d.doc_id IN (SELECT doc_id FROM doc_tags WHERE tag_id = :tag_id) OR :tag_id IS NULL)
@@ -59,6 +70,9 @@ async function get_documents(request, reply) {
 		const doc_result = await request.app.db.execute(doc_query, {isAuthenticated: isAuthenticated, user_id: user_id, user_type: user_type,
 			doc_group: request.query.doc_group, doc_key: request.query.doc_key, tag_id: request.query.tag_id}, {outFormat: 4002});
 		const doc = doc_result.rows
+
+		// Convert tags string to JSON array
+		doc.map(v => v.tags = (v.tags ? JSON.parse(v.tags) : []));
 
 		if (doc.length == 0) {
 			return reply(Boom.notFound('Document not found'));
