@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const uuid = require('uuid');
 const util = require('util');
 
 module.exports = [
@@ -127,149 +128,25 @@ async function delete_updated_keys(request, reply) {
         // Promisify Redis client
         const delRedis = util.promisify(client.del).bind(client);
 
+        // Create a batch_id
+        const batch_id = uuid.v1();
 
-        /*
-            Setup manufacturer variables and
-            get a list of product_ids that will be
-            used in all of the pattern queries
-        */
-
-        // Inner SQL for product queries
-        const inner_sql = `
-            SELECT product_id, dateupdated
-            FROM dealer.dealer_inventory_2
-            UNION ALL
-            SELECT product_id, dateadded AS dateupdated
-            FROM product_images
-            UNION ALL
-            SELECT product_id, dateentered AS dateupdated
-            FROM product_inv_notes
-            UNION ALL
-            SELECT product_id, qa_date AS dateupdated
-            FROM product_qa
-            UNION ALL
-            SELECT product_id, date_submitted AS dateupdated
-            FROM order_stories s, orders o WHERE s.order_no = o.order_no
+        // Set batch_id
+        const batch_query = `
+            UPDATE q_cache_keys
+            SET batch_id = :batch_id
+            WHERE batch_id IS NULL
         `;
-
-        // Determine which mfg to process
-        const mfg_query = `
-            SELECT p.mfg_account_id FROM
-            (
-                ${inner_sql}
-            ) x,
-            products p
-            WHERE x.product_id = p.product_id
-            AND p.cacheupdated < x.dateupdated
-        `;
-        const mfg_result = await request.app.db.execute(mfg_query, {}, {outFormat: 4002, maxRows: 1});
-
-        // Stop processing if no records are found
-        if ( mfg_result.rows.length == 0) {
-            return reply(`0 products found`);
-        }
-
-        // Set mfg variables
-        const mfg_account_id = mfg_result.rows[0]['MFG_ACCOUNT_ID'];
-        const mfg = (mfg_account_id == 1) ? 'brp' : (mfg_account_id == 2) ? 'mercury' : 'yamaha';
-
-        // Subquery to get updated products
-        const product_query = `
-            SELECT DISTINCT x.product_id FROM
-            (
-                ${inner_sql}
-            ) x,
-            products p
-            WHERE x.product_id = p.product_id
-            AND p.cacheupdated < x.dateupdated
-            AND p.mfg_account_id = :mfg_account_id
-        `;
-        const product_result = await request.app.db.execute(product_query, {mfg_account_id: mfg_account_id}, {maxRows: request.query.num_rows});
-        const product_id_array = [].concat.apply([], product_result.rows);
-        const product_id_list = `'${product_id_array.join('\',\'')}'`;
-
-
+        const batch_result = await request.app.db.execute(batch_query, {batch_id: batch_id}, {autoCommit: true});
 
         /* 
-            Queries to generate Redis patterns
-        */
-        // Single Product pattern
-        const single_product_query = `
-            SELECT '/single_product:'||product_id||':{LANGUAGE_ID}' AS pattern
-            FROM products
-            WHERE product_id IN (${product_id_list})
-        `;
-
-        // Product Listing pattern
-        const product_listing_query = `
-            SELECT pattern FROM
-            (
-                SELECT '/product_listing:'||category_id||':{LANGUAGE_ID}' AS pattern, LEVEL AS cat_level
-                FROM category c
-                START WITH c.category_id IN (SELECT category_id FROM products WHERE product_id IN (${product_id_list}))
-                CONNECT BY PRIOR c.parent_category_id = c.category_id
-            )
-            WHERE cat_level = 2
-        `;
-
-        // Diagram Page pattern
-        const diagram_page_query = `
-            SELECT DISTINCT '/diagram_page:${mfg_account_id}-'||pageid||'-parts,refnums:{LANGUAGE_ID}' FROM
-            (SELECT b.PageID, (
-              SELECT MAX (
-                  CASE
-                    WHEN p.superceding_product_id IS NULL THEN p.Product_ID
-                    WHEN di.Inventory > 0 THEN p.Product_ID
-                  END
-                )
-              FROM  Products p
-                INNER JOIN dealer.dealer_inventory_2 di ON di.product_id = p.product_id AND di.display = 1
-              START WITH p.product_ID = b.product_ID
-              CONNECT BY NOCYCLE PRIOR p.superceding_product_id = p.Product_ID
-              AND PRIOR di.inventory = 0
-            ) SS_Product_ID
-            FROM ${mfg}.pages b)
-            WHERE SS_Product_ID IN (${product_id_list})
-        `;
-
-        // Diagram Prop pattern
-        const diagram_prop_query = `
-            SELECT DISTINCT '/diagram_prop:${mfg_account_id}-'||g.groupid||'-:{LANGUAGE_ID}'
-            FROM
-            (
-              SELECT CONNECT_BY_ROOT product_id original_product_id, product_id AS current_product_id, CONNECT_BY_ISLEAF ISLEAF
-              FROM products
-              CONNECT BY NOCYCLE PRIOR superceding_product_id = Product_ID
-            ) p,
-            ${mfg}.pages m, ${mfg}.groups g
-            WHERE m.pageid = g.pageid
-            AND p.original_product_id = m.product_id
-            AND ISLEAF = 1
-            AND current_product_id IN (${product_id_list})
-            UNION
-            SELECT DISTINCT '/diagram_prop:${mfg_account_id}-'||g.groupid||'-:{LANGUAGE_ID}'
-            FROM prop_groups pg, ${mfg}.groups g, gearcase_pages p, gearcase_housings h
-            WHERE pg.prop_group_id = h.prop_group_id 
-            AND g.pageid = p.pageid
-            AND h.latest_product_id = p.latest_product_id
-            AND p.mfg = ${mfg_account_id}
-            AND original_group_type = 'primary'
-            AND pg.product_id IN (${product_id_list})
-        `;
-
-        /* 
-            Combine all of the Redis pattern queries and execute
+            Get Redis patterns from queue
         */
         const redis_pattern_query = `
-            ${single_product_query}
-            UNION ALL
-            ${product_listing_query}
-            UNION ALL
-            ${diagram_page_query}
-            UNION ALL
-            ${diagram_prop_query}
+            SELECT redis_pattern FROM q_cache_keys
+            WHERE batch_id = :batch_id
         `;
-        const redis_pattern_result = await request.app.db.execute(redis_pattern_query, {}, {maxRows: 100000});
+        const redis_pattern_result = await request.app.db.execute(redis_pattern_query, {batch_id: batch_id});
         const redis_pattern = [].concat.apply([], redis_pattern_result.rows);
 
         // Create patterns for each language
@@ -284,15 +161,14 @@ async function delete_updated_keys(request, reply) {
         // Delete keys
         const redis_del = redis_pattern_combined.length == 0 ? 0 : await delRedis(redis_pattern_combined);
 
-        // Update products table
-        const update_query = `
-            UPDATE products
-            SET cacheupdated = sysdate
-            WHERE product_id IN (${product_id_list})
+        // Delete processed keys from q_cache_keys
+        const delete_query = `
+            DELETE FROM q_cache_keys
+            WHERE batch_id = :batch_id
         `;
-        const update_result = await request.app.db.execute(update_query, {}, {autoCommit: true});
+        const delete_result = await request.app.db.execute(delete_query, {batch_id: batch_id}, {autoCommit: true});
 
-        reply(`${redis_del} key(s) deleted for ${mfg}`);
+        reply(`${redis_del} key(s) deleted`);
 
     } catch(error) {
         
