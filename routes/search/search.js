@@ -51,60 +51,60 @@ async function search(request, reply) {
 		// models query
 		const models_query = [
 			{ index: 'models', type: 'models_es' },
-	    	{
-	    	'query': {
+			{
+			'query': {
 					'multi_match': {
-		        'query': request.params.search_parameter,
-		        'fields': ['mfg_name', 'product_line', 'year', 'engine', 'model'],
-		        'type': 'most_fields'
-		    	}
+				'query': request.params.search_parameter,
+				'fields': ['mfg_name', 'product_line', 'year', 'engine', 'model'],
+				'type': 'most_fields'
+				}
 				},
 					'from': request.query.page_number - 1,
-		    	'size': 18
+				'size': 18
 			},
 			{ index: 'serials', type: 'serials_es' },
-	    	{
-	    	'query': {
+			{
+			'query': {
 					'multi_match': {
-		        'query': request.params.search_parameter,
-		        'fields': ['serial_number'],
-		        'type': 'most_fields'
-		    	}
+				'query': request.params.search_parameter,
+				'fields': ['serial_number'],
+				'type': 'most_fields'
+				}
 				},
 					'from': request.query.page_number - 1,
-		    	'size': 18
+				'size': 18
 			}
 		];
 
 		// products query
 		const products_query = [
 			{ index: 'products', type: 'products_es' },
-	    	{
-	    	'query': {
+			{
+			'query': {
 					'multi_match': {
-		        'query': request.params.search_parameter,
-		        'fields': ['sku^2', 'superceding_products.sku^2', 'interchange.sku^2'],
-		        'type': 'most_fields'
-		    	}
+				'query': request.params.search_parameter,
+				'fields': ['sku^2', 'superceding_products.sku^2', 'interchange.sku^2'],
+				'type': 'most_fields'
+				}
 				},
 					'from': request.query.page_number - 1,
-		    	'size': 24
+				'size': 24
 			}
 		]
 
 		// pages query
 		const pages_query = [
 			{ index: 'pages', type: 'pages_es' },
-	    	{
-	    	'query': {
+			{
+			'query': {
 					'multi_match': {
-		        'query': request.params.search_parameter,
-		        'fields': ['diagram.alt_title', 'diagram.notes', 'diagram.page_title', 'diagram.result', 'parts.footnote_text', 'parts.sku^2', 'parts.partno', 'parts.name^2'],
-		        'type': 'most_fields'
-		    	}
+				'query': request.params.search_parameter,
+				'fields': ['diagram.alt_title', 'diagram.notes', 'diagram.page_title', 'diagram.result', 'parts.footnote_text', 'parts.sku^2', 'parts.partno', 'parts.name^2'],
+				'type': 'most_fields'
+				}
 				},
 					'from': request.query.page_number - 1,
-		    	'size': 24
+				'size': 24
 			}
 		]
 
@@ -135,22 +135,23 @@ async function search(request, reply) {
 		results['pages'] = []
 		for (const [i, r] of response.responses.entries()) {
 
-		  // Move _source to root
-		  searchResults = r.hits.hits.map(result => result['_source']);
+			// Move _source to root
+			searchResults = r.hits.hits.map(result => result['_source']);
 
-		  // models
-		  // Concatenate the 'models' and 'serials' response
-		  if ((!index && (i == 0 || i == 1)) || index == 'models') {
-		  	results['models'] = results['models'].concat(searchResults);
-		  }
-		  // products
-		  if ((!index && i == 2) || (index == 'products' && i == 0)) {
-		  	results['products'] = searchResults;
-		  }
-		  // pages
-		  if ((!index && i == 3) || (index == 'pages' && i == 0)) {
-		  	results['pages'] = searchResults;
-		  }
+			// models
+			// Concatenate the 'models' and 'serials' response
+			if ((!index && (i == 0 || i == 1)) || index == 'models') {
+				results['models'] = results['models'].concat(searchResults);
+			}
+			// products
+			if ((!index && i == 2) || (index == 'products' && i == 0)) {
+				results['products'] = searchResults;
+			}
+			// pages
+			if ((!index && i == 3) || (index == 'pages' && i == 0)) {
+				results['pages'] = searchResults;
+			}
+
 		}
 
 		// Add results for debug mode
@@ -179,7 +180,7 @@ async function suggest(request, reply) {
 		const response = await client.msearch({
 			body: [
 				{ index: 'models', type: 'models_es' },
-		    {
+			{
 					'suggest': {
 						'models-suggest': {
 							'prefix': request.params.search_parameter, 
@@ -190,7 +191,7 @@ async function suggest(request, reply) {
 					}
 				},
 				{ index: 'serials', type: 'serials_es' },
-		    {
+			{
 					'suggest': {
 						'serial-suggest': {
 							'prefix': request.params.search_parameter, 
@@ -201,7 +202,7 @@ async function suggest(request, reply) {
 					}
 				},
 				{ index: 'products', type: 'products_es' },
-		    {
+			{
 					'suggest': {
 						'products-suggest': {
 							'prefix': request.params.search_parameter, 
@@ -220,19 +221,19 @@ async function suggest(request, reply) {
 		results['products'] = []
 		for (const [i, r] of response.responses.entries()) {
 			suggestKey = Object.keys(r.suggest)[0]
-		  suggestResults = r.suggest[suggestKey][0]['options']
+			suggestResults = r.suggest[suggestKey][0]['options']
 
-		  // Move _source to root
-		  suggestResults = suggestResults.map(result => result['_source']);
+			// Move _source to root
+			suggestResults = suggestResults.map(result => result['_source']);
 
-		  // models
-		  if (suggestKey == 'models-suggest' || suggestKey == 'serial-suggest') {
-		  	results['models'] = results['models'].concat(suggestResults);
-		  }
-		  // products
-		  if (suggestKey == 'products-suggest') {
-		  	results['products'] = suggestResults;
-		  }
+			// models
+			if (suggestKey == 'models-suggest' || suggestKey == 'serial-suggest') {
+				results['models'] = results['models'].concat(suggestResults);
+			}
+			// products
+			if (suggestKey == 'products-suggest') {
+				results['products'] = suggestResults;
+			}
 		}
 
 		// Add results for debug mode
