@@ -60,7 +60,7 @@ async function search(request, reply) {
 		    	}
 				},
 					'from': request.query.page_number - 1,
-		    	'size': 10
+		    	'size': 18
 			},
 			{ index: 'serials', type: 'serials_es' },
 	    	{
@@ -72,7 +72,7 @@ async function search(request, reply) {
 		    	}
 				},
 					'from': request.query.page_number - 1,
-		    	'size': 10
+		    	'size': 18
 			}
 		];
 
@@ -88,7 +88,7 @@ async function search(request, reply) {
 		    	}
 				},
 					'from': request.query.page_number - 1,
-		    	'size': 10
+		    	'size': 24
 			}
 		]
 
@@ -104,7 +104,7 @@ async function search(request, reply) {
 		    	}
 				},
 					'from': request.query.page_number - 1,
-		    	'size': 10
+		    	'size': 24
 			}
 		]
 
