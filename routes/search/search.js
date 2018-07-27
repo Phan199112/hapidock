@@ -15,7 +15,7 @@ module.exports = [
 					},
 					query: {
 						debug: Joi.boolean().description('Debug mode'),
-						index: Joi.string().valid(['models','products','pages']).description('Index to return'),
+						index: Joi.string().valid(['models','serials','products','pages']).description('Index to return'),
 						page_number: Joi.number().default(1).description('Page number')
 					}
 				}
@@ -61,7 +61,11 @@ async function search(request, reply) {
 				},
 					'from': request.query.page_number - 1,
 				'size': 18
-			},
+			}
+		];
+
+		// serials query
+		const serials_query = [
 			{ index: 'serials', type: 'serials_es' },
 			{
 			'query': {
@@ -113,6 +117,9 @@ async function search(request, reply) {
 		if (index == 'models') {
 			es_query = models_query;
 		}
+		else if (index == 'serials') {
+			es_query = serials_query;
+		}
 		else if (index == 'products') {
 			es_query = products_query;
 		}
@@ -120,7 +127,7 @@ async function search(request, reply) {
 			es_query = pages_query;
 		}
 		else {
-			es_query = models_query.concat( products_query, pages_query );
+			es_query = models_query.concat( serials_query, products_query, pages_query );
 		}
 
 		// Send Elasticsearch request
@@ -131,6 +138,7 @@ async function search(request, reply) {
 		// Clean up response object
 		let results = {}
 		results['models'] = []
+		results['serials'] = []
 		results['products'] = []
 		results['pages'] = []
 		for (const [i, r] of response.responses.entries()) {
@@ -139,9 +147,12 @@ async function search(request, reply) {
 			searchResults = r.hits.hits.map(result => result['_source']);
 
 			// models
-			// Concatenate the 'models' and 'serials' response
-			if ((!index && (i == 0 || i == 1)) || index == 'models') {
-				results['models'] = results['models'].concat(searchResults);
+			if ((!index && i == 0) || index == 'models') {
+				results['models'] = searchResults;
+			}
+			// serials
+			if ((!index && i == 1) || index == 'serials') {
+				results['serials'] = searchResults;
 			}
 			// products
 			if ((!index && i == 2) || (index == 'products' && i == 0)) {
