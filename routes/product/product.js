@@ -9,6 +9,7 @@ module.exports = [
         config: {
             handler: post_product,
             description: 'Create a new product',
+            notes: 'If group_sku does not exist a new group will be created, otherwise product will be assigned to an existing group',
             auth: 'jwt',
             tags: ['api'],
             validate: {
