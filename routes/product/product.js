@@ -32,6 +32,29 @@ module.exports = [
         }
     },
     {
+        method: 'PATCH',
+        path: '/product/{mfg_account_id}/{group_sku}',
+        config: {
+            handler: patch_product,
+            description: 'Updates a product group',
+            auth: 'jwt',
+            tags: ['api'],
+            validate: {
+                params: {
+                    mfg_account_id : Joi.number().required().description('the mfg_account_id'),
+                    group_sku : Joi.string().required().min(5).description('the group sku')
+                },
+                payload: { 
+                    group_name: Joi.string().required(),
+                    short_desc: Joi.string().required(),
+                    long_desc: Joi.string(),
+                    product_type: Joi.string().valid(['prop','lowerunit','powerhead','sterndrive','engine','general','']),
+                    category_id: Joi.number().optional()
+                }
+            }
+        }
+    },
+    {
         method: 'GET',
         path: '/product/{mfg_account_id}/{group_sku}',
         config: {
@@ -139,6 +162,42 @@ async function post_product(request, reply) {
             console.log(error);
             return reply(error);
         }
+    }
+
+};
+
+async function patch_product(request, reply) {
+
+    try {
+
+        const p = request.payload;
+
+        // Update product group
+        const qry_update_group = `
+            UPDATE products
+            SET group_name = :group_name, short_desc = :short_desc, long_desc = :long_desc, product_type = :product_type, category_id = :category_id
+            WHERE mfg_account_id = :mfg_account_id AND group_sku = :group_sku
+        `;
+        update_group = await request.app.db.execute(qry_update_group, {mfg_account_id: request.params.mfg_account_id,
+            group_sku: request.params.group_sku, group_name: p.group_name, short_desc: p.short_desc, long_desc: p.long_desc,
+            product_type: p.product_type, category_id: p.category_id});
+
+        await request.app.db.commit();
+
+        // Get the product group
+        prod_group = await product_group(request.app.db, request.params.mfg_account_id, request.params.group_sku);
+        
+        if (prod_group) {
+            return reply(prod_group);
+        } else {
+            return reply(Boom.notFound('Product not found'));
+        }
+
+    } catch(error) {
+        
+        console.log(error);
+        return reply(error);
+
     }
 
 };
