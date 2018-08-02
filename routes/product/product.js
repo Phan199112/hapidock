@@ -55,6 +55,29 @@ module.exports = [
         }
     },
     {
+        method: 'PATCH',
+        path: '/variant/{product_id}/',
+        config: {
+            handler: patch_variant,
+            description: 'Updates a single product variant',
+            auth: 'jwt',
+            tags: ['api'],
+            validate: {
+                params: {
+                    product_id : Joi.number().required().description('the product_id')
+                },
+                payload: {
+                    name: Joi.string(),
+                    base_price: Joi.number(),
+                    dropship_cost: Joi.number(),
+                    retail_price: Joi.number(),
+                    core_charge: Joi.number(),
+                    display: Joi.number().valid([0,1])
+                }
+            }
+        }
+    },
+    {
         method: 'GET',
         path: '/product/{mfg_account_id}/{group_sku}',
         config: {
@@ -197,6 +220,59 @@ async function patch_product(request, reply) {
         
         console.log(error);
         return reply(error);
+
+    }
+
+};
+
+async function patch_variant(request, reply) {
+
+    try {
+
+        const p = request.payload;
+
+        // Update single product variant
+        const qry_update_variant = `
+            UPDATE products
+            SET name = :name, base_price = :base_price, dropship_cost = :dropship_cost, retail_price = :retail_price,
+                core_charge = :core_charge, display = :display
+            WHERE product_id = :product_id
+        `;
+        update_variant = await request.app.db.execute(qry_update_variant, {product_id: request.params.product_id,
+            name: p.name, base_price: p.base_price, dropship_cost: p.dropship_cost, retail_price: p.retail_price,
+            core_charge: p.core_charge, display: p.display});
+
+        // Update record in dealer_inventory_2 table
+        const qry_update_dealer_product = `
+            UPDATE dealer.dealer_inventory_2
+            SET short_desc = :short_desc, long_desc = :long_desc, base_price = :base_price, dropship_cost = :dropship_cost, core_charge = :core_charge,
+                display = :display
+            WHERE product_id = :product_id
+        `;
+        update_dealer_product = await request.app.db.execute(qry_update_dealer_product, {product_id: request.params.product_id, short_desc: p.short_desc,
+            long_desc: p.long_desc, base_price: p.base_price, dropship_cost: p.dropship_cost, core_charge: p.core_charge, display: p.display});
+
+        await request.app.db.commit();
+
+        // Get the product group
+        prod_group = await product_group(request.app.db, 1, '5001595');
+        
+        if (prod_group) {
+            return reply(prod_group);
+        } else {
+            return reply(Boom.notFound('Product not found'));
+        }
+
+    } catch(error) {
+        
+        // Check for an Oracle constraint error
+        if (error.message.split(':')[0] == 'ORA-00001') {
+            console.log(error);
+            return reply(Boom.conflict('mfg_account_id and SKU must be unique'));
+        } else {
+            console.log(error);
+            return reply(error);
+        }
 
     }
 
