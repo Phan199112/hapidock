@@ -33,7 +33,7 @@ module.exports = [
     },
     {
         method: 'PATCH',
-        path: '/product/{mfg_account_id}/{group_sku}',
+        path: '/group/{mfg_account_id}/{group_sku}',
         config: {
             handler: patch_product,
             description: 'Updates a product group',
@@ -56,10 +56,10 @@ module.exports = [
     },
     {
         method: 'PATCH',
-        path: '/variant/{product_id}/',
+        path: '/product/{product_id}/',
         config: {
             handler: patch_variant,
-            description: 'Updates a single product variant',
+            description: 'Updates a single product',
             auth: 'jwt',
             tags: ['api'],
             validate: {
@@ -79,7 +79,7 @@ module.exports = [
     },
     {
         method: 'GET',
-        path: '/product/{mfg_account_id}/{group_sku}',
+        path: '/group/{mfg_account_id}/{group_sku}',
         config: {
             handler: get_product,
             description: 'Gets a product group',
