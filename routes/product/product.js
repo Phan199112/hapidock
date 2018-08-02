@@ -327,7 +327,7 @@ async function product_group(oracledb, mfg_account_id, group_sku, return_type) {
             const products_query = `
                 SELECT p.product_id "product_id", p.name "name", p.sku "sku", p.product_type "product_type",
                     d.dateadded "dateadded", d.dateupdated "dateupdated", d.dropship_cost "dropship_cost", d.base_price "base_price",
-                    p.retail_price "retail_price", p.core_charge "core_charge", p.product_url "product_url"
+                    p.retail_price "retail_price", p.core_charge "core_charge", p.product_url "product_url", d.display "display"
                 FROM products p, dealer.dealer_inventory_2 d
                 WHERE p.product_id = d.product_id
                 AND p.mfg_account_id = ${ mfg_account_id } AND p.group_sku = :group_sku
