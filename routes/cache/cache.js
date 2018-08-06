@@ -149,6 +149,9 @@ async function delete_updated_keys(request, reply) {
         const redis_pattern_result = await request.app.db.execute(redis_pattern_query, {batch_id: batch_id});
         const redis_pattern = [].concat.apply([], redis_pattern_result.rows);
 
+        // Log number of patterns in batch
+        console.log(`${redis_pattern.length} pattern(s) in batch`)
+
         // Create patterns for each language
         const pattern_en = redis_pattern.map(function(x){return x.replace('{LANGUAGE_ID}','en');});
         const pattern_es = redis_pattern.map(function(x){return x.replace('{LANGUAGE_ID}','es');});
@@ -157,6 +160,9 @@ async function delete_updated_keys(request, reply) {
 
         // Combine patterns
         const redis_pattern_combined = [].concat.apply([], [pattern_en, pattern_es, pattern_pt, pattern_fr])
+
+        // Log number of patterns generated
+        console.log(`${redis_pattern_combined.length} pattern(s) generated across all languages`)
 
         // Delete keys
         const redis_del = redis_pattern_combined.length == 0 ? 0 : await delRedis(redis_pattern_combined);
@@ -168,7 +174,12 @@ async function delete_updated_keys(request, reply) {
         `;
         const delete_result = await request.app.db.execute(delete_query, {batch_id: batch_id}, {autoCommit: true});
 
-        reply(`${redis_del} key(s) deleted`);
+        const message = `${redis_del} key(s) deleted`;
+
+        // Log number of keys deleted
+        console.log(message);
+
+        reply(message);
 
     } catch(error) {
         
