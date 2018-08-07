@@ -351,11 +351,12 @@ async function product_group(oracledb, mfg_account_id, group_sku, return_type) {
             // @TODO - Remove redundant product_id from images
             products.map(v => v.images = images.filter(i => i.product_id == v.product_id)); // Map Images to Product
             prod_group.map(v => v.products = products); // Map Products to Product GRoup
-        }
 
-        // Remove pricing information
-        if (return_type == 'public') {
-            prod_group[0]['products'].map(v => v.dropship_cost = 0);
+            // Remove pricing information
+            if (return_type == 'public') {
+                prod_group[0]['products'].map(v => v.dropship_cost = 0);
+            }
+        
         }
 
         return prod_group[0];
