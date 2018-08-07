@@ -9,6 +9,7 @@ module.exports = [
         config: {
             handler: post_product,
             description: 'Create a new product',
+            notes: 'If group_sku does not exist a new group will be created, otherwise product will be assigned to an existing group',
             auth: 'jwt',
             tags: ['api'],
             validate: {
@@ -31,8 +32,54 @@ module.exports = [
         }
     },
     {
+        method: 'PATCH',
+        path: '/group/{mfg_account_id}/{group_sku}',
+        config: {
+            handler: patch_product,
+            description: 'Updates a product group',
+            auth: 'jwt',
+            tags: ['api'],
+            validate: {
+                params: {
+                    mfg_account_id : Joi.number().required().description('the mfg_account_id'),
+                    group_sku : Joi.string().required().min(5).description('the group sku')
+                },
+                payload: { 
+                    group_name: Joi.string().required(),
+                    short_desc: Joi.string().required(),
+                    long_desc: Joi.string(),
+                    product_type: Joi.string().valid(['prop','lowerunit','powerhead','sterndrive','engine','general','']),
+                    category_id: Joi.number().optional()
+                }
+            }
+        }
+    },
+    {
+        method: 'PATCH',
+        path: '/product/{product_id}/',
+        config: {
+            handler: patch_variant,
+            description: 'Updates a single product',
+            auth: 'jwt',
+            tags: ['api'],
+            validate: {
+                params: {
+                    product_id : Joi.number().required().description('the product_id')
+                },
+                payload: {
+                    name: Joi.string(),
+                    base_price: Joi.number(),
+                    dropship_cost: Joi.number(),
+                    retail_price: Joi.number(),
+                    core_charge: Joi.number(),
+                    display: Joi.number().valid([0,1])
+                }
+            }
+        }
+    },
+    {
         method: 'GET',
-        path: '/product/{mfg_account_id}/{group_sku}',
+        path: '/group/{mfg_account_id}/{group_sku}',
         config: {
             handler: get_product,
             description: 'Gets a product group',
@@ -142,6 +189,95 @@ async function post_product(request, reply) {
 
 };
 
+async function patch_product(request, reply) {
+
+    try {
+
+        const p = request.payload;
+
+        // Update product group
+        const qry_update_group = `
+            UPDATE products
+            SET group_name = :group_name, short_desc = :short_desc, long_desc = :long_desc, product_type = :product_type, category_id = :category_id
+            WHERE mfg_account_id = :mfg_account_id AND group_sku = :group_sku
+        `;
+        update_group = await request.app.db.execute(qry_update_group, {mfg_account_id: request.params.mfg_account_id,
+            group_sku: request.params.group_sku, group_name: p.group_name, short_desc: p.short_desc, long_desc: p.long_desc,
+            product_type: p.product_type, category_id: p.category_id});
+
+        await request.app.db.commit();
+
+        // Get the product group
+        prod_group = await product_group(request.app.db, request.params.mfg_account_id, request.params.group_sku);
+        
+        if (prod_group) {
+            return reply(prod_group);
+        } else {
+            return reply(Boom.notFound('Product not found'));
+        }
+
+    } catch(error) {
+        
+        console.log(error);
+        return reply(error);
+
+    }
+
+};
+
+async function patch_variant(request, reply) {
+
+    try {
+
+        const p = request.payload;
+
+        // Update single product variant
+        const qry_update_variant = `
+            UPDATE products
+            SET name = :name, base_price = :base_price, dropship_cost = :dropship_cost, retail_price = :retail_price,
+                core_charge = :core_charge, display = :display
+            WHERE product_id = :product_id
+        `;
+        update_variant = await request.app.db.execute(qry_update_variant, {product_id: request.params.product_id,
+            name: p.name, base_price: p.base_price, dropship_cost: p.dropship_cost, retail_price: p.retail_price,
+            core_charge: p.core_charge, display: p.display});
+
+        // Update record in dealer_inventory_2 table
+        const qry_update_dealer_product = `
+            UPDATE dealer.dealer_inventory_2
+            SET short_desc = :short_desc, long_desc = :long_desc, base_price = :base_price, dropship_cost = :dropship_cost, core_charge = :core_charge,
+                display = :display
+            WHERE product_id = :product_id
+        `;
+        update_dealer_product = await request.app.db.execute(qry_update_dealer_product, {product_id: request.params.product_id, short_desc: p.short_desc,
+            long_desc: p.long_desc, base_price: p.base_price, dropship_cost: p.dropship_cost, core_charge: p.core_charge, display: p.display});
+
+        await request.app.db.commit();
+
+        // Get the product group
+        prod_group = await product_group(request.app.db, 1, '5001595');
+        
+        if (prod_group) {
+            return reply(prod_group);
+        } else {
+            return reply(Boom.notFound('Product not found'));
+        }
+
+    } catch(error) {
+        
+        // Check for an Oracle constraint error
+        if (error.message.split(':')[0] == 'ORA-00001') {
+            console.log(error);
+            return reply(Boom.conflict('mfg_account_id and SKU must be unique'));
+        } else {
+            console.log(error);
+            return reply(error);
+        }
+
+    }
+
+};
+
 async function get_product(request, reply) {
 
 	try {
@@ -191,7 +327,7 @@ async function product_group(oracledb, mfg_account_id, group_sku, return_type) {
             const products_query = `
                 SELECT p.product_id "product_id", p.name "name", p.sku "sku", p.product_type "product_type",
                     d.dateadded "dateadded", d.dateupdated "dateupdated", d.dropship_cost "dropship_cost", d.base_price "base_price",
-                    p.retail_price "retail_price", p.core_charge "core_charge", p.product_url "product_url"
+                    p.retail_price "retail_price", p.core_charge "core_charge", p.product_url "product_url", d.display "display"
                 FROM products p, dealer.dealer_inventory_2 d
                 WHERE p.product_id = d.product_id
                 AND p.mfg_account_id = ${ mfg_account_id } AND p.group_sku = :group_sku
@@ -215,11 +351,12 @@ async function product_group(oracledb, mfg_account_id, group_sku, return_type) {
             // @TODO - Remove redundant product_id from images
             products.map(v => v.images = images.filter(i => i.product_id == v.product_id)); // Map Images to Product
             prod_group.map(v => v.products = products); // Map Products to Product GRoup
-        }
 
-        // Remove pricing information
-        if (return_type == 'public') {
-            prod_group[0]['products'].map(v => v.dropship_cost = 0);
+            // Remove pricing information
+            if (return_type == 'public') {
+                prod_group[0]['products'].map(v => v.dropship_cost = 0);
+            }
+        
         }
 
         return prod_group[0];
