@@ -146,7 +146,7 @@ async function delete_updated_keys(request, reply) {
             SELECT redis_pattern FROM q_cache_keys
             WHERE batch_id = :batch_id
         `;
-        const redis_pattern_result = await request.app.db.execute(redis_pattern_query, {batch_id: batch_id});
+        const redis_pattern_result = await request.app.db.execute(redis_pattern_query, {batch_id: batch_id}, {maxRows: 100000});
         const redis_pattern = [].concat.apply([], redis_pattern_result.rows);
 
         // Log number of patterns in batch
