@@ -98,21 +98,6 @@ module.exports = [
 		}
 	},
 	{
-		method: 'GET',
-		path: '/document/tech_article/product',
-		config: {
-			handler: get_product,
-			description: 'Search for a single product by SKU',
-			auth: 'jwt',
-			tags: ['api'],
-			validate: {
-				query: {
-					sku : Joi.string().required().description('SKU')
-				}
-			}
-		}
-	},
-	{
 		method: 'POST',
 		path: '/document/{doc_id}/tech_article/product/{product_id}',
 		config: {
@@ -252,39 +237,6 @@ async function delete_model(request, reply) {
 			// Get the updated document
 			single_doc = await single_document(request.app.db, request.params.doc_id, 'simple');
 			return reply(single_doc);
-		}
-
-	} catch(error) {
-
-		console.log(error);
-		return reply(error);
-
-	}
-
-};
-
-
-// Get Document:Tech Article:Product
-async function get_product(request, reply) {
-
-	try {
-
-		// Get a Product
-		const product_query = `
-			SELECT product_id "product_id", account_name "mfg", sku "sku", name "name"
-			FROM products p, account a
-			WHERE p.mfg_account_id = a.account_id
-			AND p.sku = :sku
-			AND p.display = 1
-			AND p.mfg_account_id IN (1,2,10)
-		`;
-		const product_result = await request.app.db.execute(product_query, {sku: request.query.sku}, {outFormat: 4002});
-		const product = product_result.rows
-
-		if (product.length == 0) {
-			return reply(Boom.notFound('Product not found'));
-		} else {
-			return reply(product);
 		}
 
 	} catch(error) {
