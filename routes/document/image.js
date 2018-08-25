@@ -70,6 +70,8 @@ module.exports = [
 
 async function post_image(request, reply) {
 
+	//@TODO: Uncaught error: Missing required key 'Bucket' in aws-sdk
+
 	try {
 
 		const data = request.payload;
@@ -180,6 +182,7 @@ async function delete_image(request, reply) {
 
 	try {
 
+		//@TODO: Missing required key 'Bucket' in params of aws-sdk
 		// Delete an image
 		const qry_delete_image = `
 			DELETE FROM doc_images

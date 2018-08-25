@@ -57,6 +57,8 @@ module.exports = [
 
 async function get_i18n(request, reply) {
 
+    //@TODO: "SOURCE_TABLE": invalid identifier
+
 	try {
 
 		// Get i18n terms

@@ -34,7 +34,7 @@ const provision = async () => {
 
         // IP Address Auth
         // @TODO - Pull the IP Addresses from Oracle
-        await server.auth.strategy('admin_ips', 'ip-whitelist', ['179.7.148.90','206.189.8.53','190.234.11.171','73.181.122.139','46.17.43.171', '104.237.86.160']);
+        await server.auth.strategy('admin_ips', 'ip-whitelist', ['179.7.148.90','206.189.8.53','190.234.11.171','73.181.122.139','46.17.43.171']);
 
         // await server.auth.default('jwt');
 
